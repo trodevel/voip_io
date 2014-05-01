@@ -19,13 +19,13 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: i_voip_service.h 454 2014-04-25 22:41:14Z serge $
+// $Id: i_voip_service.h 473 2014-04-29 17:48:53Z serge $
 
 #ifndef I_VOIP_SERVICE_H
 #define I_VOIP_SERVICE_H
 
 #include <string>                   // std::string
-#include "../utils/Types.h"         // uint32
+#include "../utils/types.h"         // uint32
 
 #include "namespace_voipservice.h"  // NAMESPACE_VOIP_SERVICE_START
 
