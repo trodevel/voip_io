@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_service.cpp 440 2014-04-23 16:55:49Z serge $
+// $Id: voip_service.cpp 572 2014-05-22 17:19:33Z serge $
 
 
 #include "voip_service.h"           // self
@@ -275,6 +275,11 @@ void VoipService::DialerIO::on_call_duration( const uint32 n, const uint32 t )
     dummy_log( 0, MODULENAME, "call %u dur %u", n, t );
 
     SCOPE_LOCK( mutex_ );
+
+    if( !has_callback() )
+        return;
+
+    callback_->on_call_duration( n, t );
 }
 
 void VoipService::DialerIO::on_call_failure_reason( const uint32 n, const uint32 c )
