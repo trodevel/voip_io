@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_service.cpp 572 2014-05-22 17:19:33Z serge $
+// $Id: voip_service.cpp 918 2014-08-13 18:10:45Z serge $
 
 
 #include "voip_service.h"           // self
@@ -76,7 +76,7 @@ bool VoipService::initiate_call( const std::string & party, uint32 & call_id, ui
 
     if( !b )
     {
-        dummy_log( 0, MODULENAME, "failed calling: %s", party.c_str() );
+        dummy_log_error( MODULENAME, "failed calling: %s", party.c_str() );
         return false;
     }
 
@@ -86,7 +86,7 @@ bool VoipService::initiate_call( const std::string & party, uint32 & call_id, ui
 
     if( ev.get_id() != skype_wrap::Event::CALL_STATUS )
     {
-        dummy_log( 0, MODULENAME, "unexpected response: %s", response.c_str() );
+        dummy_log_error( MODULENAME, "unexpected response: %s", response.c_str() );
         return false;
     }
 
@@ -104,7 +104,7 @@ bool VoipService::drop_call( uint32 call_id )
 
     if( !b )
     {
-        dummy_log( 0, MODULENAME, "failed dropping call: %d", call_id );
+        dummy_log_error( MODULENAME, "failed dropping call: %d", call_id );
         return false;
     }
 
@@ -119,7 +119,7 @@ bool VoipService::set_input_file( uint32 call_id, const std::string & filename )
 
     if( !b )
     {
-        dummy_log( 0, MODULENAME, "failed setting input file: %s", filename.c_str() );
+        dummy_log_error( MODULENAME, "failed setting input file: %s", filename.c_str() );
         return false;
     }
 
@@ -129,7 +129,7 @@ bool VoipService::set_input_file( uint32 call_id, const std::string & filename )
 
     if( ev.get_id() != skype_wrap::Event::ALTER_CALL_SET_INPUT_FILE )
     {
-        dummy_log( 0, MODULENAME, "unexpected response: %s", response.c_str() );
+        dummy_log_error( MODULENAME, "unexpected response: %s", response.c_str() );
         return false;
     }
 
@@ -146,7 +146,7 @@ bool VoipService::set_output_file( uint32 call_id, const std::string & filename 
 
     if( !b )
     {
-        dummy_log( 0, MODULENAME, "failed setting output file: %s", filename.c_str() );
+        dummy_log_error( MODULENAME, "failed setting output file: %s", filename.c_str() );
         return false;
     }
 
@@ -156,7 +156,7 @@ bool VoipService::set_output_file( uint32 call_id, const std::string & filename 
 
     if( ev.get_id() != skype_wrap::Event::ALTER_CALL_SET_OUTPUT_FILE )
     {
-        dummy_log( 0, MODULENAME, "unexpected response: %s", response.c_str() );
+        dummy_log_error( MODULENAME, "unexpected response: %s", response.c_str() );
         return false;
     }
 
@@ -193,7 +193,7 @@ VoipService::DialerIO::DialerIO():
 
 void VoipService::DialerIO::on_conn_status( const skype_wrap::conn_status_e s )
 {
-    dummy_log( 0, MODULENAME, "conn status %u", s );
+    dummy_log_info( MODULENAME, "conn status %u", s );
 
     SCOPE_LOCK( mutex_ );
 
@@ -203,7 +203,7 @@ void VoipService::DialerIO::on_conn_status( const skype_wrap::conn_status_e s )
 }
 void VoipService::DialerIO::on_user_status( const skype_wrap::user_status_e s )
 {
-    dummy_log( 0, MODULENAME, "user status %u", s );
+    dummy_log_info( MODULENAME, "user status %u", s );
 
     SCOPE_LOCK( mutex_ );
 
@@ -228,19 +228,19 @@ void VoipService::DialerIO::send_ready_if_possible()
 
 void VoipService::DialerIO::on_current_user_handle( const std::string & s )
 {
-    dummy_log( 0, MODULENAME, "current user handle %s", s.c_str() );
+    dummy_log_info( MODULENAME, "current user handle %s", s.c_str() );
 
     SCOPE_LOCK( mutex_ );
 }
 void VoipService::DialerIO::on_unknown( const std::string & s )
 {
-    dummy_log( 0, MODULENAME, "unknown response: %s", s.c_str() );
+    dummy_log_warn( MODULENAME, "unknown response: %s", s.c_str() );
 
     SCOPE_LOCK( mutex_ );
 }
 void VoipService::DialerIO::on_call_status( const uint32 n, const skype_wrap::call_status_e s )
 {
-    dummy_log( 0, MODULENAME, "call %u status %u", n, s );
+    dummy_log_debug( MODULENAME, "call %u status %u", n, s );
 
     SCOPE_LOCK( mutex_ );
 
@@ -266,13 +266,13 @@ void VoipService::DialerIO::on_call_status( const uint32 n, const skype_wrap::ca
         break;
 
     default:
-        dummy_log( 0, MODULENAME, "unhandled status %u", s );
+        dummy_log_warn( MODULENAME, "unhandled status %u", s );
         break;
     }
 }
 void VoipService::DialerIO::on_call_duration( const uint32 n, const uint32 t )
 {
-    dummy_log( 0, MODULENAME, "call %u dur %u", n, t );
+    dummy_log_debug( MODULENAME, "call %u dur %u", n, t );
 
     SCOPE_LOCK( mutex_ );
 
@@ -284,7 +284,7 @@ void VoipService::DialerIO::on_call_duration( const uint32 n, const uint32 t )
 
 void VoipService::DialerIO::on_call_failure_reason( const uint32 n, const uint32 c )
 {
-    dummy_log( 0, MODULENAME, "call %u failure %u", n, c );
+    dummy_log_info( MODULENAME, "call %u failure %u", n, c );
 
     SCOPE_LOCK( mutex_ );
 
@@ -319,7 +319,7 @@ errorcode_e VoipService::DialerIO::decode_failure_reason( const uint32 c )
 
 void VoipService::DialerIO::on_call_vaa_input_status( const uint32 n, const uint32 s )
 {
-    dummy_log( 0, MODULENAME, "call %u vaa_input_status %u", n, s );
+    dummy_log_debug( MODULENAME, "call %u vaa_input_status %u", n, s );
 
     SCOPE_LOCK( mutex_ );
 

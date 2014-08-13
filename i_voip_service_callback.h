@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: i_voip_service_callback.h 572 2014-05-22 17:19:33Z serge $
+// $Id: i_voip_service_callback.h 549 2014-05-22 17:19:33Z serge $
 
 #ifndef I_VOIP_SERVICE_CALLBACK_H
 #define I_VOIP_SERVICE_CALLBACK_H

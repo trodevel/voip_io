@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: namespace_voipservice.h 454 2014-04-25 22:41:14Z serge $
+// $Id: namespace_voipservice.h 431 2014-04-25 22:41:14Z serge $
 
 #ifndef NAMESPACE_VOIP_SERVICE_H
 #define NAMESPACE_VOIP_SERVICE_H

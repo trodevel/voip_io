@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: i_voip_service.h 473 2014-04-29 17:48:53Z serge $
+// $Id: i_voip_service.h 450 2014-04-29 17:48:53Z serge $
 
 #ifndef I_VOIP_SERVICE_H
 #define I_VOIP_SERVICE_H

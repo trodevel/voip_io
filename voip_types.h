@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_types.h 473 2014-04-29 17:48:53Z serge $
+// $Id: voip_types.h 450 2014-04-29 17:48:53Z serge $
 
 #ifndef VOIP_TYPES_H
 #define VOIP_TYPES_H

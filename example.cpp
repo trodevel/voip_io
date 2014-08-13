@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: example.cpp 454 2014-04-25 22:41:14Z serge $
+// $Id: example.cpp 431 2014-04-25 22:41:14Z serge $
 
 #include <cstdio>
 
