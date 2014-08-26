@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_types.h 450 2014-04-29 17:48:53Z serge $
+// $Id: voip_types.h 987 2014-08-26 17:38:23Z serge $
 
 #ifndef VOIP_TYPES_H
 #define VOIP_TYPES_H
@@ -37,8 +37,8 @@ enum errorcode_e
     ERR_NONE         = 0,
     ERR_UNKNOWN,
     ERR_WRONG_NUMBER,
-    ERR_USER_OFFLINE,
-    ERR_DIALING_ERROR,
+    ERR_SUBSCRIBER_OFFLINE,
+    ERR_REJECTED,
     ERR_HW_ERROR,
     ERR_VOIP_SPECIFIC,
 };

@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_service.cpp 918 2014-08-13 18:10:45Z serge $
+// $Id: voip_service.cpp 987 2014-08-26 17:38:23Z serge $
 
 
 #include "voip_service.h"           // self
@@ -297,15 +297,15 @@ errorcode_e VoipService::DialerIO::decode_failure_reason( const uint32 c )
             ERR_NONE,
             ERR_UNKNOWN,        //    1 CALL 181 FAILUREREASON 1 Miscellaneous error
             ERR_WRONG_NUMBER,   //    2 CALL 181 FAILUREREASON 2 User or phone number does not exist. Check that a prefix is entered for the phone number, either in the form 003725555555 or +3725555555; the form 3725555555 is incorrect.
-            ERR_USER_OFFLINE,   //    3 CALL 181 FAILUREREASON 3 User is offline
-            ERR_DIALING_ERROR,  //    4 CALL 181 FAILUREREASON 4 No proxy found
+            ERR_SUBSCRIBER_OFFLINE,   //    3 CALL 181 FAILUREREASON 3 User is offline
+            ERR_VOIP_SPECIFIC,  //    4 CALL 181 FAILUREREASON 4 No proxy found
             ERR_VOIP_SPECIFIC,  //    5 CALL 181 FAILUREREASON 5 Session terminated.
             ERR_VOIP_SPECIFIC,  //    6 CALL 181 FAILUREREASON 6 No common codec found.
             ERR_HW_ERROR,       //    7 CALL 181 FAILUREREASON 7 Sound I/O error.
             ERR_HW_ERROR,       //    8 CALL 181 FAILUREREASON 8 Problem with remote sound device.
-            ERR_VOIP_SPECIFIC,  //    9 CALL 181 FAILUREREASON 9 Call blocked by recipient.
-            ERR_VOIP_SPECIFIC,  //    10 CALL 181 FAILUREREASON 10 Recipient not a friend.
-            ERR_VOIP_SPECIFIC,  //    11 CALL 181 FAILUREREASON 11 Current user not authorized by recipient.
+            ERR_REJECTED,       //    9 CALL 181 FAILUREREASON 9 Call blocked by recipient.
+            ERR_REJECTED,       //    10 CALL 181 FAILUREREASON 10 Recipient not a friend.
+            ERR_REJECTED,       //    11 CALL 181 FAILUREREASON 11 Current user not authorized by recipient.
             ERR_VOIP_SPECIFIC,  //    12 CALL 181 FAILUREREASON 12 Sound recording error.
             ERR_VOIP_SPECIFIC,  //    13 CALL 181 FAILUREREASON 13 Failure to call a commercial contact.
             ERR_NONE,           //    14 CALL 181 FAILUREREASON 14 Conference call has been dropped by the host. Note that this does not normally indicate abnormal call termination. Call being dropped for all the participants when the conference host leavs the call is expected behaviour.
