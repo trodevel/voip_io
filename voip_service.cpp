@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_service.cpp 987 2014-08-26 17:38:23Z serge $
+// $Id: voip_service.cpp 1099 2014-10-01 19:02:11Z serge $
 
 
 #include "voip_service.h"           // self
@@ -91,7 +91,7 @@ bool VoipService::initiate_call( const std::string & party, uint32 & call_id, ui
     }
 
     call_id = ev.get_call_id();
-    status  = ev.get_call_s();
+    status  = static_cast<uint32>( ev.get_call_s() );
 
     return true;
 }
@@ -187,7 +187,7 @@ bool VoipService::register_callback( IVoipServiceCallback * callback )
 
 
 VoipService::DialerIO::DialerIO():
-        cs_( skype_wrap::CS_NONE ), us_( skype_wrap::US_NONE ), callback_( 0L ), errorcode_( ERR_NONE )
+        cs_( skype_wrap::conn_status_e::NONE ), us_( skype_wrap::user_status_e::NONE ), callback_( 0L ), errorcode_( ERR_NONE )
 {
 }
 
@@ -214,10 +214,10 @@ void VoipService::DialerIO::on_user_status( const skype_wrap::user_status_e s )
 
 void VoipService::DialerIO::send_ready_if_possible()
 {
-    if( cs_ != skype_wrap::CS_ONLINE )
+    if( cs_ != skype_wrap::conn_status_e::ONLINE )
         return;
 
-    if( us_ != skype_wrap::US_ONLINE )
+    if( us_ != skype_wrap::user_status_e::ONLINE )
         return;
 
     if( !has_callback() )
@@ -249,20 +249,24 @@ void VoipService::DialerIO::on_call_status( const uint32 n, const skype_wrap::ca
 
     switch( s )
     {
-    case skype_wrap::CLS_FINISHED:
+    case skype_wrap::call_status_e::FINISHED:
         callback_->on_call_end( n, errorcode_ );
         break;
 
-    case skype_wrap::CLS_ROUTING:
+    case skype_wrap::call_status_e::ROUTING:
         callback_->on_dial( n );
         break;
 
-    case skype_wrap::CLS_RINGING:
+    case skype_wrap::call_status_e::RINGING:
         callback_->on_ring( n );
         break;
 
-    case skype_wrap::CLS_INPROGRESS:
+    case skype_wrap::call_status_e::INPROGRESS:
         callback_->on_connect( n );
+        break;
+
+    case skype_wrap::call_status_e::NONE:
+        callback_->on_call_end( n, errorcode_ );
         break;
 
     default:
