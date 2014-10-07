@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_service.cpp 1099 2014-10-01 19:02:11Z serge $
+// $Id: voip_service.cpp 1101 2014-10-06 17:27:33Z serge $
 
 
 #include "voip_service.h"           // self
@@ -267,6 +267,10 @@ void VoipService::DialerIO::on_call_status( const uint32 n, const skype_wrap::ca
 
     case skype_wrap::call_status_e::NONE:
         callback_->on_call_end( n, errorcode_ );
+        break;
+
+    case skype_wrap::call_status_e::FAILED:
+        callback_->on_error( n, errorcode_ );
         break;
 
     default:
