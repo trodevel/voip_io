@@ -19,12 +19,12 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_types.h 987 2014-08-26 17:38:23Z serge $
+// $Id: voip_types.h 1114 2014-10-08 17:33:43Z serge $
 
 #ifndef VOIP_TYPES_H
 #define VOIP_TYPES_H
 
-#include "namespace_voipservice.h"  // NAMESPACE_VOIP_SERVICE_START
+#include "namespace_lib.h"          // NAMESPACE_VOIP_SERVICE_START
 
 #include "../utils/types.h"         // uint32
 

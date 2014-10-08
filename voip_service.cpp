@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_service.cpp 1107 2014-10-07 18:54:37Z serge $
+// $Id: voip_service.cpp 1114 2014-10-08 17:33:43Z serge $
 
 
 #include "voip_service.h"           // self
@@ -33,7 +33,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../utils/wrap_mutex.h"        // SCOPE_LOCK
 
-#include "namespace_voipservice.h"  // NAMESPACE_VOIP_SERVICE_START
+#include "namespace_lib.h"              // NAMESPACE_VOIP_SERVICE_START
 
 #define MODULENAME      "VoipService"
 
@@ -241,7 +241,7 @@ void VoipService::DialerIO::on_unknown( const std::string & s )
 }
 void VoipService::DialerIO::on_call_status( const uint32 n, const skype_wrap::call_status_e s )
 {
-    dummy_log_debug( MODULENAME, "call %u status %s (%u)", n, skype_wrap::to_string( s ).c_str(), s );
+    dummy_log_debug( MODULENAME, "call %u status %s", n, skype_wrap::to_string( s ).c_str() );
 
     SCOPE_LOCK( mutex_ );
 
@@ -280,7 +280,7 @@ void VoipService::DialerIO::on_call_status( const uint32 n, const skype_wrap::ca
         break;
 
     default:
-        dummy_log_warn( MODULENAME, "unhandled status %u", s );
+        dummy_log_warn( MODULENAME, "unhandled status %s (%u)", skype_wrap::to_string( s ).c_str(), s );
         break;
     }
 }

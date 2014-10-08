@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_service.h 431 2014-04-25 22:41:14Z serge $
+// $Id: voip_service.h 1114 2014-10-08 17:33:43Z serge $
 
 #ifndef VOIP_SERVICE_H
 #define VOIP_SERVICE_H
@@ -32,7 +32,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../skype_io/i_skype_callback.h"   // ISkypeCallback
 #include "voip_types.h"             // errorcode_e
 
-#include "namespace_voipservice.h"  // NAMESPACE_VOIP_SERVICE_START
+#include "namespace_lib.h"          // NAMESPACE_VOIP_SERVICE_START
 
 namespace skype_wrap
 {
