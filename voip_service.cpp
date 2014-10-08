@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_service.cpp 1101 2014-10-06 17:27:33Z serge $
+// $Id: voip_service.cpp 1107 2014-10-07 18:54:37Z serge $
 
 
 #include "voip_service.h"           // self
@@ -28,6 +28,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "../skype_io/skype_io.h"       // SkypeIo
 #include "../skype_io/event_parser.h"   // EventParser
+#include "../skype_io/str_helper.h"     // StrHelper
 
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../utils/wrap_mutex.h"        // SCOPE_LOCK
@@ -240,7 +241,7 @@ void VoipService::DialerIO::on_unknown( const std::string & s )
 }
 void VoipService::DialerIO::on_call_status( const uint32 n, const skype_wrap::call_status_e s )
 {
-    dummy_log_debug( MODULENAME, "call %u status %u", n, s );
+    dummy_log_debug( MODULENAME, "call %u status %s (%u)", n, skype_wrap::to_string( s ).c_str(), s );
 
     SCOPE_LOCK( mutex_ );
 
@@ -249,6 +250,10 @@ void VoipService::DialerIO::on_call_status( const uint32 n, const skype_wrap::ca
 
     switch( s )
     {
+    case skype_wrap::call_status_e::CANCELLED:
+        callback_->on_call_end( n, errorcode_ );
+        break;
+
     case skype_wrap::call_status_e::FINISHED:
         callback_->on_call_end( n, errorcode_ );
         break;
@@ -270,6 +275,7 @@ void VoipService::DialerIO::on_call_status( const uint32 n, const skype_wrap::ca
         break;
 
     case skype_wrap::call_status_e::FAILED:
+    case skype_wrap::call_status_e::REFUSED:
         callback_->on_error( n, errorcode_ );
         break;
 
