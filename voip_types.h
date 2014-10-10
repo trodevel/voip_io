@@ -19,28 +19,24 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_types.h 1114 2014-10-08 17:33:43Z serge $
+// $Id: voip_types.h 1115 2014-10-09 17:19:50Z serge $
 
 #ifndef VOIP_TYPES_H
 #define VOIP_TYPES_H
 
 #include "namespace_lib.h"          // NAMESPACE_VOIP_SERVICE_START
 
-#include "../utils/types.h"         // uint32
-
-#include <string>
-
 NAMESPACE_VOIP_SERVICE_START
 
-enum errorcode_e
+enum class errorcode_e
 {
-    ERR_NONE         = 0,
-    ERR_UNKNOWN,
-    ERR_WRONG_NUMBER,
-    ERR_SUBSCRIBER_OFFLINE,
-    ERR_REJECTED,
-    ERR_HW_ERROR,
-    ERR_VOIP_SPECIFIC,
+    NONE         = 0,
+    UNKNOWN,
+    WRONG_NUMBER,
+    SUBSCRIBER_OFFLINE,
+    REJECTED,
+    HW_ERROR,
+    VOIP_SPECIFIC,
 };
 
 NAMESPACE_VOIP_SERVICE_END

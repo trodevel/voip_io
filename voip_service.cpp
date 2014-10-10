@@ -19,15 +19,17 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_service.cpp 1114 2014-10-08 17:33:43Z serge $
+// $Id: voip_service.cpp 1121 2014-10-09 18:50:41Z serge $
 
 
 #include "voip_service.h"           // self
 
 #include <boost/bind.hpp>
+#include <boost/shared_ptr.hpp>     // boost::shared_ptr
 
 #include "../skype_io/skype_io.h"       // SkypeIo
 #include "../skype_io/event_parser.h"   // EventParser
+#include "../skype_io/events.h"         // BasicCallEvent
 #include "../skype_io/str_helper.h"     // StrHelper
 
 #include "../utils/dummy_logger.h"      // dummy_log
@@ -83,16 +85,16 @@ bool VoipService::initiate_call( const std::string & party, uint32 & call_id, ui
 
     std::string response = sio_->get_response();
 
-    skype_wrap::Event ev = skype_wrap::EventParser::to_event( response );
+    boost::shared_ptr< skype_wrap::Event > ev( skype_wrap::EventParser::to_event( response ) );
 
-    if( ev.get_id() != skype_wrap::Event::CALL_STATUS )
+    if( ev->get_type() != skype_wrap::Event::CALL_STATUS )
     {
         dummy_log_error( MODULENAME, "unexpected response: %s", response.c_str() );
         return false;
     }
 
-    call_id = ev.get_call_id();
-    status  = static_cast<uint32>( ev.get_call_s() );
+    call_id = static_cast<skype_wrap::BasicCallEvent*>( ev.get() )->get_call_id();
+    status  = static_cast<uint32>( static_cast<skype_wrap::CallStatusEvent*>( ev.get() )->get_call_s() );
 
     return true;
 }
@@ -126,15 +128,15 @@ bool VoipService::set_input_file( uint32 call_id, const std::string & filename )
 
     std::string response = sio_->get_response();
 
-    skype_wrap::Event ev = skype_wrap::EventParser::to_event( response );
+    boost::shared_ptr< skype_wrap::Event > ev( skype_wrap::EventParser::to_event( response ) );
 
-    if( ev.get_id() != skype_wrap::Event::ALTER_CALL_SET_INPUT_FILE )
+    if( ev->get_type() != skype_wrap::Event::ALTER_CALL_SET_INPUT_FILE )
     {
         dummy_log_error( MODULENAME, "unexpected response: %s", response.c_str() );
         return false;
     }
 
-    call_id = ev.get_call_id();
+    call_id = static_cast<skype_wrap::BasicCallEvent*>( ev.get() )->get_call_id();
 
     return true;
 }
@@ -153,15 +155,15 @@ bool VoipService::set_output_file( uint32 call_id, const std::string & filename 
 
     std::string response = sio_->get_response();
 
-    skype_wrap::Event ev = skype_wrap::EventParser::to_event( response );
+    boost::shared_ptr< skype_wrap::Event > ev( skype_wrap::EventParser::to_event( response ) );
 
-    if( ev.get_id() != skype_wrap::Event::ALTER_CALL_SET_OUTPUT_FILE )
+    if( ev->get_type() != skype_wrap::Event::ALTER_CALL_SET_OUTPUT_FILE )
     {
         dummy_log_error( MODULENAME, "unexpected response: %s", response.c_str() );
         return false;
     }
 
-    call_id = ev.get_call_id();
+    call_id = static_cast<skype_wrap::BasicCallEvent*>( ev.get() )->get_call_id();
 
     return true;
 }
@@ -188,7 +190,7 @@ bool VoipService::register_callback( IVoipServiceCallback * callback )
 
 
 VoipService::DialerIO::DialerIO():
-        cs_( skype_wrap::conn_status_e::NONE ), us_( skype_wrap::user_status_e::NONE ), callback_( 0L ), errorcode_( ERR_NONE )
+        cs_( skype_wrap::conn_status_e::NONE ), us_( skype_wrap::user_status_e::NONE ), callback_( 0L ), errorcode_( errorcode_e::NONE )
 {
 }
 
@@ -251,11 +253,11 @@ void VoipService::DialerIO::on_call_status( const uint32 n, const skype_wrap::ca
     switch( s )
     {
     case skype_wrap::call_status_e::CANCELLED:
-        callback_->on_call_end( n, errorcode_ );
+        callback_->on_call_end( n, static_cast<uint32>( errorcode_ ) );
         break;
 
     case skype_wrap::call_status_e::FINISHED:
-        callback_->on_call_end( n, errorcode_ );
+        callback_->on_call_end( n, static_cast<uint32>( errorcode_ ) );
         break;
 
     case skype_wrap::call_status_e::ROUTING:
@@ -271,12 +273,12 @@ void VoipService::DialerIO::on_call_status( const uint32 n, const skype_wrap::ca
         break;
 
     case skype_wrap::call_status_e::NONE:
-        callback_->on_call_end( n, errorcode_ );
+        callback_->on_call_end( n, static_cast<uint32>( errorcode_ ) );
         break;
 
     case skype_wrap::call_status_e::FAILED:
     case skype_wrap::call_status_e::REFUSED:
-        callback_->on_error( n, errorcode_ );
+        callback_->on_error( n, static_cast<uint32>( errorcode_ ) );
         break;
 
     default:
@@ -308,27 +310,27 @@ void VoipService::DialerIO::on_call_failure_reason( const uint32 n, const uint32
 errorcode_e VoipService::DialerIO::decode_failure_reason( const uint32 c )
 {
     static const errorcode_e table[] = {
-            ERR_NONE,
-            ERR_UNKNOWN,        //    1 CALL 181 FAILUREREASON 1 Miscellaneous error
-            ERR_WRONG_NUMBER,   //    2 CALL 181 FAILUREREASON 2 User or phone number does not exist. Check that a prefix is entered for the phone number, either in the form 003725555555 or +3725555555; the form 3725555555 is incorrect.
-            ERR_SUBSCRIBER_OFFLINE,   //    3 CALL 181 FAILUREREASON 3 User is offline
-            ERR_VOIP_SPECIFIC,  //    4 CALL 181 FAILUREREASON 4 No proxy found
-            ERR_VOIP_SPECIFIC,  //    5 CALL 181 FAILUREREASON 5 Session terminated.
-            ERR_VOIP_SPECIFIC,  //    6 CALL 181 FAILUREREASON 6 No common codec found.
-            ERR_HW_ERROR,       //    7 CALL 181 FAILUREREASON 7 Sound I/O error.
-            ERR_HW_ERROR,       //    8 CALL 181 FAILUREREASON 8 Problem with remote sound device.
-            ERR_REJECTED,       //    9 CALL 181 FAILUREREASON 9 Call blocked by recipient.
-            ERR_REJECTED,       //    10 CALL 181 FAILUREREASON 10 Recipient not a friend.
-            ERR_REJECTED,       //    11 CALL 181 FAILUREREASON 11 Current user not authorized by recipient.
-            ERR_VOIP_SPECIFIC,  //    12 CALL 181 FAILUREREASON 12 Sound recording error.
-            ERR_VOIP_SPECIFIC,  //    13 CALL 181 FAILUREREASON 13 Failure to call a commercial contact.
-            ERR_NONE,           //    14 CALL 181 FAILUREREASON 14 Conference call has been dropped by the host. Note that this does not normally indicate abnormal call termination. Call being dropped for all the participants when the conference host leavs the call is expected behaviour.
+            errorcode_e::NONE,
+            errorcode_e::UNKNOWN,        //    1 CALL 181 FAILUREREASON 1 Miscellaneous error
+            errorcode_e::WRONG_NUMBER,   //    2 CALL 181 FAILUREREASON 2 User or phone number does not exist. Check that a prefix is entered for the phone number, either in the form 003725555555 or +3725555555; the form 3725555555 is incorrect.
+            errorcode_e::SUBSCRIBER_OFFLINE,   //    3 CALL 181 FAILUREREASON 3 User is offline
+            errorcode_e::VOIP_SPECIFIC,  //    4 CALL 181 FAILUREREASON 4 No proxy found
+            errorcode_e::VOIP_SPECIFIC,  //    5 CALL 181 FAILUREREASON 5 Session terminated.
+            errorcode_e::VOIP_SPECIFIC,  //    6 CALL 181 FAILUREREASON 6 No common codec found.
+            errorcode_e::HW_ERROR,       //    7 CALL 181 FAILUREREASON 7 Sound I/O error.
+            errorcode_e::HW_ERROR,       //    8 CALL 181 FAILUREREASON 8 Problem with remote sound device.
+            errorcode_e::REJECTED,       //    9 CALL 181 FAILUREREASON 9 Call blocked by recipient.
+            errorcode_e::REJECTED,       //    10 CALL 181 FAILUREREASON 10 Recipient not a friend.
+            errorcode_e::REJECTED,       //    11 CALL 181 FAILUREREASON 11 Current user not authorized by recipient.
+            errorcode_e::VOIP_SPECIFIC,  //    12 CALL 181 FAILUREREASON 12 Sound recording error.
+            errorcode_e::VOIP_SPECIFIC,  //    13 CALL 181 FAILUREREASON 13 Failure to call a commercial contact.
+            errorcode_e::NONE,           //    14 CALL 181 FAILUREREASON 14 Conference call has been dropped by the host. Note that this does not normally indicate abnormal call termination. Call being dropped for all the participants when the conference host leavs the call is expected behaviour.
     };
 
     if( c <= 14 )
         return table[c];
 
-    return ERR_UNKNOWN;
+    return errorcode_e::UNKNOWN;
 }
 
 void VoipService::DialerIO::on_call_vaa_input_status( const uint32 n, const uint32 s )
