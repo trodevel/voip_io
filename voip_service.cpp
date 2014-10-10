@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_service.cpp 1121 2014-10-09 18:50:41Z serge $
+// $Id: voip_service.cpp 1133 2014-10-10 17:49:39Z serge $
 
 
 #include "voip_service.h"           // self
@@ -284,6 +284,22 @@ void VoipService::DialerIO::on_call_status( const uint32 n, const skype_wrap::ca
     default:
         dummy_log_warn( MODULENAME, "unhandled status %s (%u)", skype_wrap::to_string( s ).c_str(), s );
         break;
+    }
+}
+void VoipService::DialerIO::on_call_pstn_status( const uint32 n, const uint32 e, const std::string & descr )
+{
+    dummy_log_debug( MODULENAME, "call %u PSTN status %u '%s'", n, e, descr.c_str() );
+
+    SCOPE_LOCK( mutex_ );
+
+    if( !has_callback() )
+        return;
+
+    if( e != 0 )
+    {
+        dummy_log_error( MODULENAME, "call %u - got PSTN error %u '%s'", n, e, descr.c_str() );
+
+        callback_->on_error( n, static_cast<uint32>( errorcode_ ) );
     }
 }
 void VoipService::DialerIO::on_call_duration( const uint32 n, const uint32 t )
