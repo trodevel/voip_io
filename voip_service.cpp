@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_service.cpp 1133 2014-10-10 17:49:39Z serge $
+// $Id: voip_service.cpp 1136 2014-10-13 17:09:52Z serge $
 
 
 #include "voip_service.h"           // self
@@ -299,7 +299,7 @@ void VoipService::DialerIO::on_call_pstn_status( const uint32 n, const uint32 e,
     {
         dummy_log_error( MODULENAME, "call %u - got PSTN error %u '%s'", n, e, descr.c_str() );
 
-        callback_->on_error( n, static_cast<uint32>( errorcode_ ) );
+        callback_->on_fatal_error( n, static_cast<uint32>( errorcode_ ) );
     }
 }
 void VoipService::DialerIO::on_call_duration( const uint32 n, const uint32 t )

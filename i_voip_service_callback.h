@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: i_voip_service_callback.h 1114 2014-10-08 17:33:43Z serge $
+// $Id: i_voip_service_callback.h 1135 2014-10-13 17:08:06Z serge $
 
 #ifndef I_VOIP_SERVICE_CALLBACK_H
 #define I_VOIP_SERVICE_CALLBACK_H
@@ -41,6 +41,7 @@ public:
 
     virtual void on_ready( uint32 errorcode )                                               = 0;
     virtual void on_error( uint32 call_id, uint32 errorcode )                               = 0;
+    virtual void on_fatal_error( uint32 call_id, uint32 errorcode )                         = 0;
     virtual void on_call_end( uint32 call_id, uint32 errorcode )                            = 0;
     virtual void on_dial( uint32 call_id )                                                  = 0;
     virtual void on_ring( uint32 call_id )                                                  = 0;
