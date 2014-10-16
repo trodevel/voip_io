@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_service.h 1133 2014-10-10 17:49:39Z serge $
+// $Id: voip_service.h 1155 2014-10-16 19:22:44Z serge $
 
 #ifndef VOIP_SERVICE_H
 #define VOIP_SERVICE_H
@@ -33,6 +33,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "voip_types.h"             // errorcode_e
 
 #include "namespace_lib.h"          // NAMESPACE_VOIP_SERVICE_START
+
+namespace asyncp
+{
+class IAsyncProxy;
+}
 
 namespace skype_wrap
 {
@@ -50,13 +55,16 @@ private:
     public:
         DialerIO();
 
-        bool register_callback( IVoipServiceCallback * callback );
+        bool init( asyncp::IAsyncProxy     * proxy );
+
+        bool register_callback( IVoipServiceCallback    * callback );
 
         // callback interface
         virtual void on_conn_status( const skype_wrap::conn_status_e s );
         virtual void on_user_status( const skype_wrap::user_status_e s );
         virtual void on_current_user_handle( const std::string & s );
         virtual void on_unknown( const std::string & s );
+        virtual void on_error( const uint32 error, const std::string & descr );
         virtual void on_call_status( const uint32 n, const skype_wrap::call_status_e s );
         virtual void on_call_pstn_status( const uint32 n, const uint32 e, const std::string & descr );
         virtual void on_call_duration( const uint32 n, const uint32 t );
@@ -77,6 +85,8 @@ private:
         skype_wrap::conn_status_e   cs_;
         skype_wrap::user_status_e   us_;
 
+
+        asyncp::IAsyncProxy         * proxy_;
         IVoipServiceCallback        * callback_;
 
         errorcode_e                 errorcode_;
@@ -97,7 +107,9 @@ public:
 
     virtual bool shutdown();
 
-    bool init( skype_wrap::SkypeIo * sw );
+    bool init(
+            skype_wrap::SkypeIo     * sw,
+            asyncp::IAsyncProxy     * proxy );
 
     skype_wrap::ISkypeCallback* get_event_handler();
 
