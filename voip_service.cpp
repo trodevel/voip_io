@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_service.cpp 1155 2014-10-16 19:22:44Z serge $
+// $Id: voip_service.cpp 1161 2014-10-17 17:21:40Z serge $
 
 
 #include "voip_service.h"           // self
@@ -27,8 +27,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>     // boost::shared_ptr
 
-#include "../asyncp/i_async_proxy.h"    // IAsyncProxy
-#include "../asyncp/event.h"            // new_event
 #include "../skype_io/skype_io.h"       // SkypeIo
 #include "../skype_io/event_parser.h"   // EventParser
 #include "../skype_io/events.h"         // BasicCallEvent
@@ -36,7 +34,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../utils/wrap_mutex.h"        // SCOPE_LOCK
-#include "../utils/assert.h"            // ASSERT
 
 #include "namespace_lib.h"              // NAMESPACE_VOIP_SERVICE_START
 
@@ -53,20 +50,14 @@ VoipService::~VoipService()
 {
 }
 
-bool VoipService::init(
-        skype_wrap::SkypeIo     * sw,
-        asyncp::IAsyncProxy     * proxy )
+bool VoipService::init( skype_wrap::SkypeIo * sw )
 {
     SCOPE_LOCK( mutex_ );
 
     if( sw == 0L )
         return false;
 
-    ASSERT( proxy );
-
-    sio_    =   sw;
-
-    dio_.init( proxy );
+    sio_ =   sw;
 
     return true;
 }
@@ -212,22 +203,8 @@ bool VoipService::register_callback( IVoipServiceCallback * callback )
 
 
 VoipService::DialerIO::DialerIO():
-        cs_( skype_wrap::conn_status_e::NONE ), us_( skype_wrap::user_status_e::NONE ),
-        proxy_( nullptr ),
-        callback_( 0L ), errorcode_( errorcode_e::NONE )
+        cs_( skype_wrap::conn_status_e::NONE ), us_( skype_wrap::user_status_e::NONE ), callback_( 0L ), errorcode_( errorcode_e::NONE )
 {
-}
-
-bool VoipService::DialerIO::init(
-        asyncp::IAsyncProxy     * proxy )
-{
-    SCOPE_LOCK( mutex_ );
-
-    ASSERT( proxy );
-
-    proxy_      = proxy;
-
-    return true;
 }
 
 void VoipService::DialerIO::on_conn_status( const skype_wrap::conn_status_e s )
@@ -262,7 +239,7 @@ void VoipService::DialerIO::send_ready_if_possible()
     if( !has_callback() )
         return;
 
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &IVoipServiceCallback::on_ready, callback_, 0 ) ) ) );
+    callback_->on_ready( 0 );
 }
 
 void VoipService::DialerIO::on_current_user_handle( const std::string & s )
@@ -286,7 +263,7 @@ void VoipService::DialerIO::on_error( const uint32 error, const std::string & de
     if( !has_callback() )
         return;
 
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &IVoipServiceCallback::on_error, callback_, 0, error ) ) ) );
+    callback_->on_error( 0, error );
 
 }
 void VoipService::DialerIO::on_call_status( const uint32 n, const skype_wrap::call_status_e s )
@@ -301,32 +278,32 @@ void VoipService::DialerIO::on_call_status( const uint32 n, const skype_wrap::ca
     switch( s )
     {
     case skype_wrap::call_status_e::CANCELLED:
-        proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &IVoipServiceCallback::on_call_end, callback_, n, static_cast<uint32>( errorcode_ ) ) ) ) );
+        callback_->on_call_end( n, static_cast<uint32>( errorcode_ ) );
         break;
 
     case skype_wrap::call_status_e::FINISHED:
-        proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &IVoipServiceCallback::on_call_end, callback_, n, static_cast<uint32>( errorcode_ ) ) ) ) );
+        callback_->on_call_end( n, static_cast<uint32>( errorcode_ ) );
         break;
 
     case skype_wrap::call_status_e::ROUTING:
-        proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &IVoipServiceCallback::on_dial, callback_, n ) ) ) );
+        callback_->on_dial( n );
         break;
 
     case skype_wrap::call_status_e::RINGING:
-        proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &IVoipServiceCallback::on_ring, callback_, n ) ) ) );
+        callback_->on_ring( n );
         break;
 
     case skype_wrap::call_status_e::INPROGRESS:
-        proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &IVoipServiceCallback::on_connect, callback_, n ) ) ) );
+        callback_->on_connect( n );
         break;
 
     case skype_wrap::call_status_e::NONE:
-        proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &IVoipServiceCallback::on_call_end, callback_, n, static_cast<uint32>( errorcode_ ) ) ) ) );
+        callback_->on_call_end( n, static_cast<uint32>( errorcode_ ) );
         break;
 
     case skype_wrap::call_status_e::FAILED:
     case skype_wrap::call_status_e::REFUSED:
-        proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &IVoipServiceCallback::on_error, callback_, n, static_cast<uint32>( errorcode_ ) ) ) ) );
+        callback_->on_error( n, static_cast<uint32>( errorcode_ ) );
         break;
 
     default:
@@ -347,7 +324,7 @@ void VoipService::DialerIO::on_call_pstn_status( const uint32 n, const uint32 e,
     {
         dummy_log_error( MODULENAME, "call %u - got PSTN error %u '%s'", n, e, descr.c_str() );
 
-        proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &IVoipServiceCallback::on_fatal_error, callback_, n, static_cast<uint32>( errorcode_ ) ) ) ) );
+        callback_->on_fatal_error( n, static_cast<uint32>( errorcode_ ) );
     }
 }
 void VoipService::DialerIO::on_call_duration( const uint32 n, const uint32 t )
@@ -359,7 +336,7 @@ void VoipService::DialerIO::on_call_duration( const uint32 n, const uint32 t )
     if( !has_callback() )
         return;
 
-    proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &IVoipServiceCallback::on_call_duration, callback_, n, t ) ) ) );
+    callback_->on_call_duration( n, t );
 }
 
 void VoipService::DialerIO::on_call_failure_reason( const uint32 n, const uint32 c )
@@ -407,9 +384,9 @@ void VoipService::DialerIO::on_call_vaa_input_status( const uint32 n, const uint
         return;
 
     if( s )
-        proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &IVoipServiceCallback::on_play_start, callback_, n ) ) ) );
+        callback_->on_play_start( n );
     else
-        proxy_->add_event( asyncp::IEventPtr( asyncp::new_event( boost::bind( &IVoipServiceCallback::on_play_stop, callback_, n ) ) ) );
+        callback_->on_play_stop( n );
 }
 
 bool VoipService::DialerIO::has_callback() const
