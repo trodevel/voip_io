@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_service.cpp 1161 2014-10-17 17:21:40Z serge $
+// $Id: voip_service.cpp 1272 2014-12-17 18:25:08Z serge $
 
 
 #include "voip_service.h"           // self
@@ -34,15 +34,16 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../utils/wrap_mutex.h"        // SCOPE_LOCK
+#include "../utils/assert.h"            // ASSERT
 
-#include "namespace_lib.h"              // NAMESPACE_VOIP_SERVICE_START
 
 #define MODULENAME      "VoipService"
 
 NAMESPACE_VOIP_SERVICE_START
 
 VoipService::VoipService() :
-        sio_( 0L )
+        sio_( 0L ),
+        callback_( nullptr )
 {
 }
 
@@ -62,24 +63,41 @@ bool VoipService::init( skype_wrap::SkypeIo * sw )
     return true;
 }
 
-bool VoipService::is_ready() const
+void VoipService::consume( const VoipioObject * req )
 {
     SCOPE_LOCK( mutex_ );
 
-    if( sio_ )
-        return true;
+    if( typeid( *req ) == typeid( VoipioInitiateCall ) )
+    {
+        handle( dynamic_cast< const VoipioInitiateCall *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( VoipioPlayFile ) )
+    {
+        handle( dynamic_cast< const VoipioPlayFile *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( VoipioDrop ) )
+    {
+        handle( dynamic_cast< const VoipioDrop *>( req ) );
+    }
+    else
+    {
+        dummy_log_fatal( MODULENAME, "consume: cannot cast request to known type - %p", (void *) req );
 
-    return false;
+        ASSERT( 0 );
+    }
+
+    delete req;
 }
-bool VoipService::initiate_call( const std::string & party, uint32 & call_id, uint32 & status )
+
+bool VoipService::handle( const VoipioInitiateCall * req )
 {
     SCOPE_LOCK( mutex_ );
 
-    bool b = sio_->call( party );
+    bool b = sio_->call( req->party );
 
     if( !b )
     {
-        dummy_log_error( MODULENAME, "failed calling: %s", party.c_str() );
+        dummy_log_error( MODULENAME, "failed calling: %s", req->party.c_str() );
         return false;
     }
 
@@ -102,40 +120,49 @@ bool VoipService::initiate_call( const std::string & party, uint32 & call_id, ui
         return false;
     }
 
-    call_id = static_cast<skype_wrap::BasicCallEvent*>( ev.get() )->get_call_id();
+    if( callback_ == nullptr )
+    {
+        return true;
+    }
+
+    VoipioInitiateCallResponse * res = new VoipioInitiateCallResponse;
+
+    res->call_id = static_cast<skype_wrap::BasicCallEvent*>( ev.get() )->get_call_id();
 
     skype_wrap::call_status_e status_code = static_cast<skype_wrap::CallStatusEvent*>( ev.get() )->get_call_s();
-    status  = static_cast<uint32>( status_code );
+    res->status  = static_cast<uint32>( status_code );
 
-    dummy_log_debug( MODULENAME, "call initiated: %u, status %s", call_id, skype_wrap::to_string( status_code ).c_str() );
+    dummy_log_debug( MODULENAME, "call initiated: %u, status %s", res->call_id, skype_wrap::to_string( status_code ).c_str() );
+
+    callback_->consume( res );
 
     return true;
 }
 
-bool VoipService::drop_call( uint32 call_id )
+bool VoipService::handle( const VoipioDrop * req )
 {
     SCOPE_LOCK( mutex_ );
 
-    bool b = sio_->alter_call_hangup( call_id );
+    bool b = sio_->alter_call_hangup( req->call_id );
 
     if( !b )
     {
-        dummy_log_error( MODULENAME, "failed dropping call: %d", call_id );
+        dummy_log_error( MODULENAME, "failed dropping call: %d", req->call_id );
         return false;
     }
 
     return true;
 }
 
-bool VoipService::set_input_file( uint32 call_id, const std::string & filename )
+bool VoipService::handle( const VoipioPlayFile * req )
 {
     SCOPE_LOCK( mutex_ );
 
-    bool b = sio_->alter_call_set_input_file( call_id, filename );
+    bool b = sio_->alter_call_set_input_file( req->call_id, req->filename );
 
     if( !b )
     {
-        dummy_log_error( MODULENAME, "failed setting input file: %s", filename.c_str() );
+        dummy_log_error( MODULENAME, "failed setting input file: %s", req->filename.c_str() );
         return false;
     }
 
@@ -149,20 +176,20 @@ bool VoipService::set_input_file( uint32 call_id, const std::string & filename )
         return false;
     }
 
-    call_id = static_cast<skype_wrap::BasicCallEvent*>( ev.get() )->get_call_id();
+//    call_id = static_cast<skype_wrap::BasicCallEvent*>( ev.get() )->get_call_id();
 
     return true;
 }
 
-bool VoipService::set_output_file( uint32 call_id, const std::string & filename )
+bool VoipService::handle( const VoipioRecordFile * req )
 {
     SCOPE_LOCK( mutex_ );
 
-    bool b = sio_->alter_call_set_output_file( call_id, filename );
+    bool b = sio_->alter_call_set_output_file( req->call_id, req->filename );
 
     if( !b )
     {
-        dummy_log_error( MODULENAME, "failed setting output file: %s", filename.c_str() );
+        dummy_log_error( MODULENAME, "failed setting output file: %s", req->filename.c_str() );
         return false;
     }
 
@@ -176,7 +203,7 @@ bool VoipService::set_output_file( uint32 call_id, const std::string & filename 
         return false;
     }
 
-    call_id = static_cast<skype_wrap::BasicCallEvent*>( ev.get() )->get_call_id();
+//    call_id = static_cast<skype_wrap::BasicCallEvent*>( ev.get() )->get_call_id();
 
     return true;
 }
@@ -197,6 +224,8 @@ skype_wrap::ISkypeCallback* VoipService::get_event_handler()
 bool VoipService::register_callback( IVoipServiceCallback * callback )
 {
     SCOPE_LOCK( mutex_ );
+
+    callback_   = callback;
 
     return dio_.register_callback( callback );
 }

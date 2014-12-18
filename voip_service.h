@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_service.h 1161 2014-10-17 17:21:40Z serge $
+// $Id: voip_service.h 1272 2014-12-17 18:25:08Z serge $
 
 #ifndef VOIP_SERVICE_H
 #define VOIP_SERVICE_H
@@ -32,6 +32,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../skype_io/i_skype_callback.h"   // ISkypeCallback
 #include "voip_types.h"             // errorcode_e
 
+#include "objects.h"                    // VoipioObject
 #include "namespace_lib.h"          // NAMESPACE_VOIP_SERVICE_START
 
 namespace skype_wrap
@@ -90,11 +91,7 @@ public:
 
     ~VoipService();
 
-    virtual bool is_ready() const;
-    virtual bool initiate_call( const std::string & party, uint32 & call_id, uint32 & status );
-    virtual bool drop_call( uint32 call_id );
-    virtual bool set_input_file( uint32 call_id, const std::string & filename );
-    virtual bool set_output_file( uint32 call_id, const std::string & filename );
+    void consume( const VoipioObject * req );
 
     virtual bool shutdown();
 
@@ -106,6 +103,11 @@ public:
 
 private:
 
+    bool handle( const VoipioInitiateCall * req );
+    bool handle( const VoipioDrop * req );
+    bool handle( const VoipioPlayFile * req );
+    bool handle( const VoipioRecordFile * req );
+
 public:
 
 
@@ -113,6 +115,7 @@ private:
     mutable boost::mutex        mutex_;
 
     skype_wrap::SkypeIo         * sio_;
+    IVoipServiceCallback        * callback_;
 
     DialerIO                    dio_;
 };
