@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: objects.h 1272 2014-12-17 18:25:08Z serge $
+// $Id: objects.h 1273 2014-12-18 18:18:51Z serge $
 
 #ifndef VOIP_SERVICE_OBJECTS_H
 #define VOIP_SERVICE_OBJECTS_H
@@ -68,15 +68,22 @@ struct VoipioCallbackObject: public VoipioObject
 {
 };
 
+struct VoipioErrorResponse: public VoipioCallbackObject
+{
+    uint32 errorcode;
+    std::string descr;
+};
+
+struct VoipioRejectResponse: public VoipioCallbackObject
+{
+    uint32 errorcode;
+    std::string descr;
+};
+
 struct VoipioInitiateCallResponse: public VoipioCallbackObject
 {
     uint32 call_id;
     uint32 status;
-};
-
-struct VoipioReady: public VoipioCallbackObject
-{
-    uint32 errorcode;
 };
 
 

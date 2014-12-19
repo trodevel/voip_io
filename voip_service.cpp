@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_service.cpp 1272 2014-12-17 18:25:08Z serge $
+// $Id: voip_service.cpp 1273 2014-12-18 18:18:51Z serge $
 
 
 #include "voip_service.h"           // self
@@ -42,8 +42,12 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 NAMESPACE_VOIP_SERVICE_START
 
 VoipService::VoipService() :
-        sio_( 0L ),
-        callback_( nullptr )
+        sio_( nullptr ),
+        callback_( nullptr ),
+        state_( UNDEFINED ),
+        cs_( skype_wrap::conn_status_e::NONE ),
+        us_( skype_wrap::user_status_e::NONE ),
+        errorcode_( errorcode_e::NONE )
 {
 }
 
@@ -65,6 +69,11 @@ bool VoipService::init( skype_wrap::SkypeIo * sw )
 
 void VoipService::consume( const VoipioObject * req )
 {
+    ServerBase::consume( req );
+}
+
+void VoipService::handle( const servt::IObject* req )
+{
     SCOPE_LOCK( mutex_ );
 
     if( typeid( *req ) == typeid( VoipioInitiateCall ) )
@@ -81,7 +90,7 @@ void VoipService::consume( const VoipioObject * req )
     }
     else
     {
-        dummy_log_fatal( MODULENAME, "consume: cannot cast request to known type - %p", (void *) req );
+        dummy_log_fatal( MODULENAME, "handle: cannot cast request to known type - %p", (void *) req );
 
         ASSERT( 0 );
     }
@@ -89,16 +98,26 @@ void VoipService::consume( const VoipioObject * req )
     delete req;
 }
 
-bool VoipService::handle( const VoipioInitiateCall * req )
+void VoipService::handle( const VoipioInitiateCall * req )
 {
-    SCOPE_LOCK( mutex_ );
+    // private: no mutex lock
+
+    if( state_ != READY )
+    {
+        send_reject_response( 0, "not ready" );
+        return;
+    }
 
     bool b = sio_->call( req->party );
 
-    if( !b )
+    if( b == false )
     {
         dummy_log_error( MODULENAME, "failed calling: %s", req->party.c_str() );
-        return false;
+
+        if( callback_ )
+            callback_->consume( create_error_response( 0, "skype io failed" ) );
+
+        return;
     }
 
     std::string response = sio_->get_response();
@@ -109,61 +128,79 @@ bool VoipService::handle( const VoipioInitiateCall * req )
     {
         if( ev->get_type() == skype_wrap::Event::ERROR )
         {
-            dummy_log_error( MODULENAME, "error occurred: %u '%s'",
-                    static_cast<skype_wrap::ErrorEvent*>( ev.get() )->get_par_int(),
-                    static_cast<skype_wrap::ErrorEvent*>( ev.get() )->get_par_str().c_str() );
+            uint32 errorcode    = static_cast<skype_wrap::ErrorEvent*>( ev.get() )->get_par_int();
+            std::string descr   = static_cast<skype_wrap::ErrorEvent*>( ev.get() )->get_par_str();
+
+            dummy_log_error( MODULENAME, "error occurred: %u '%s'", errorcode, descr.c_str() );
+
+            if( callback_ )
+                callback_->consume( create_error_response( errorcode, descr ) );
         }
         else
         {
             dummy_log_error( MODULENAME, "unexpected response: %s", response.c_str() );
+
+            if( callback_ )
+                callback_->consume( create_error_response( 0, "unexpected response: " + response ) );
         }
-        return false;
+        return;
     }
 
-    if( callback_ == nullptr )
-    {
-        return true;
-    }
-
-    VoipioInitiateCallResponse * res = new VoipioInitiateCallResponse;
-
-    res->call_id = static_cast<skype_wrap::BasicCallEvent*>( ev.get() )->get_call_id();
+    uint32 call_id = static_cast<skype_wrap::BasicCallEvent*>( ev.get() )->get_call_id();
 
     skype_wrap::call_status_e status_code = static_cast<skype_wrap::CallStatusEvent*>( ev.get() )->get_call_s();
-    res->status  = static_cast<uint32>( status_code );
+    uint32 status  = static_cast<uint32>( status_code );
 
-    dummy_log_debug( MODULENAME, "call initiated: %u, status %s", res->call_id, skype_wrap::to_string( status_code ).c_str() );
+    dummy_log_debug( MODULENAME, "call initiated: %u, status %s", call_id, skype_wrap::to_string( status_code ).c_str() );
 
-    callback_->consume( res );
+    if( callback_ )
+        callback_->consume( create_initiate_call_response( call_id, status ) );
 
-    return true;
 }
 
-bool VoipService::handle( const VoipioDrop * req )
+void VoipService::handle( const VoipioDrop * req )
 {
-    SCOPE_LOCK( mutex_ );
+    // private: no mutex lock
+
+    if( state_ != READY )
+    {
+        send_reject_response( 0, "not ready" );
+        return;
+    }
 
     bool b = sio_->alter_call_hangup( req->call_id );
 
-    if( !b )
+    if( b == false )
     {
         dummy_log_error( MODULENAME, "failed dropping call: %d", req->call_id );
-        return false;
-    }
 
-    return true;
+        if( callback_ )
+            callback_->consume( create_error( req->call_id, "failed dropping call" ) );
+
+        return;
+    }
 }
 
-bool VoipService::handle( const VoipioPlayFile * req )
+void VoipService::handle( const VoipioPlayFile * req )
 {
-    SCOPE_LOCK( mutex_ );
+    // private: no mutex lock
+
+    if( state_ != READY )
+    {
+        send_reject_response( 0, "not ready" );
+        return;
+    }
 
     bool b = sio_->alter_call_set_input_file( req->call_id, req->filename );
 
-    if( !b )
+    if( b == false )
     {
         dummy_log_error( MODULENAME, "failed setting input file: %s", req->filename.c_str() );
-        return false;
+
+        if( callback_ )
+            callback_->consume( create_error( req->call_id, "failed setting input file: " + req->filename ) );
+
+        return;
     }
 
     std::string response = sio_->get_response();
@@ -173,24 +210,33 @@ bool VoipService::handle( const VoipioPlayFile * req )
     if( ev->get_type() != skype_wrap::Event::ALTER_CALL_SET_INPUT_FILE )
     {
         dummy_log_error( MODULENAME, "unexpected response: %s", response.c_str() );
-        return false;
+
+        if( callback_ )
+            callback_->consume( create_error( req->call_id, "unexpected response: " + response ) );
+
+        return;
     }
-
-//    call_id = static_cast<skype_wrap::BasicCallEvent*>( ev.get() )->get_call_id();
-
-    return true;
 }
 
-bool VoipService::handle( const VoipioRecordFile * req )
+void VoipService::handle( const VoipioRecordFile * req )
 {
-    SCOPE_LOCK( mutex_ );
+    // private: no mutex lock
+
+    if( state_ != READY )
+    {
+        send_reject_response( 0, "not ready" );
+        return;
+    }
 
     bool b = sio_->alter_call_set_output_file( req->call_id, req->filename );
 
-    if( !b )
+    if( b == false )
     {
         dummy_log_error( MODULENAME, "failed setting output file: %s", req->filename.c_str() );
-        return false;
+
+        if( callback_ )
+            callback_->consume( create_error( req->call_id, "failed output input file: " + req->filename ) );
+
     }
 
     std::string response = sio_->get_response();
@@ -200,43 +246,36 @@ bool VoipService::handle( const VoipioRecordFile * req )
     if( ev->get_type() != skype_wrap::Event::ALTER_CALL_SET_OUTPUT_FILE )
     {
         dummy_log_error( MODULENAME, "unexpected response: %s", response.c_str() );
-        return false;
+
+        if( callback_ )
+            callback_->consume( create_error( req->call_id, "unexpected response: " + response ) );
+
     }
-
-//    call_id = static_cast<skype_wrap::BasicCallEvent*>( ev.get() )->get_call_id();
-
-    return true;
 }
-
 
 bool VoipService::shutdown()
 {
+    ServerBase::shutdown();
+
     return sio_->shutdown();
-}
-
-skype_wrap::ISkypeCallback* VoipService::get_event_handler()
-{
-    SCOPE_LOCK( mutex_ );
-
-    return &dio_;
 }
 
 bool VoipService::register_callback( IVoipServiceCallback * callback )
 {
     SCOPE_LOCK( mutex_ );
 
+    if( !callback )
+        return false;
+
+    if( callback_ )
+        return false;
+
     callback_   = callback;
 
-    return dio_.register_callback( callback );
+    return true;
 }
 
-
-VoipService::DialerIO::DialerIO():
-        cs_( skype_wrap::conn_status_e::NONE ), us_( skype_wrap::user_status_e::NONE ), callback_( 0L ), errorcode_( errorcode_e::NONE )
-{
-}
-
-void VoipService::DialerIO::on_conn_status( const skype_wrap::conn_status_e s )
+void VoipService::on_conn_status( const skype_wrap::conn_status_e s )
 {
     dummy_log_info( MODULENAME, "conn status %u", s );
 
@@ -244,9 +283,10 @@ void VoipService::DialerIO::on_conn_status( const skype_wrap::conn_status_e s )
 
     cs_ = s;
 
-    send_ready_if_possible();
+    switch_to_ready_if_possible();
 }
-void VoipService::DialerIO::on_user_status( const skype_wrap::user_status_e s )
+
+void VoipService::on_user_status( const skype_wrap::user_status_e s )
 {
     dummy_log_info( MODULENAME, "user status %u", s );
 
@@ -254,10 +294,10 @@ void VoipService::DialerIO::on_user_status( const skype_wrap::user_status_e s )
 
     us_ = s;
 
-    send_ready_if_possible();
+    switch_to_ready_if_possible();
 }
 
-void VoipService::DialerIO::send_ready_if_possible()
+void VoipService::switch_to_ready_if_possible()
 {
     if( cs_ != skype_wrap::conn_status_e::ONLINE )
         return;
@@ -265,43 +305,46 @@ void VoipService::DialerIO::send_ready_if_possible()
     if( us_ != skype_wrap::user_status_e::ONLINE )
         return;
 
-    if( !has_callback() )
-        return;
+    ASSERT( state_ == UNDEFINED );
 
-    callback_->on_ready( 0 );
+    state_ == READY;
 }
 
-void VoipService::DialerIO::on_current_user_handle( const std::string & s )
+void VoipService::send_reject_response( uint32 errorcode, const std::string & descr )
+{
+    if( callback_ )
+        callback_->consume( create_reject_response( errorcode, descr ) );
+}
+
+void VoipService::on_current_user_handle( const std::string & s )
 {
     dummy_log_info( MODULENAME, "current user handle %s", s.c_str() );
 
     SCOPE_LOCK( mutex_ );
 }
-void VoipService::DialerIO::on_unknown( const std::string & s )
+void VoipService::on_unknown( const std::string & s )
 {
     dummy_log_warn( MODULENAME, "unknown response: %s", s.c_str() );
 
     SCOPE_LOCK( mutex_ );
 }
-void VoipService::DialerIO::on_error( const uint32 error, const std::string & descr )
+void VoipService::on_error( const uint32 error, const std::string & descr )
 {
     dummy_log_debug( MODULENAME, "error %u '%s'", error, descr.c_str() );
 
     SCOPE_LOCK( mutex_ );
 
-    if( !has_callback() )
-        return;
-
-    callback_->on_error( 0, error );
-
+    if( callback_ )
+        callback_->consume( create_error_response( error, descr ) );
 }
-void VoipService::DialerIO::on_call_status( const uint32 n, const skype_wrap::call_status_e s )
+
+void VoipService::on_call_status( const uint32 n, const skype_wrap::call_status_e s )
 {
     dummy_log_debug( MODULENAME, "call %u status %s", n, skype_wrap::to_string( s ).c_str() );
 
     SCOPE_LOCK( mutex_ );
 
-    if( !has_callback() )
+    if( callback_ == nullptr )
         return;
 
     switch( s )
@@ -340,7 +383,7 @@ void VoipService::DialerIO::on_call_status( const uint32 n, const skype_wrap::ca
         break;
     }
 }
-void VoipService::DialerIO::on_call_pstn_status( const uint32 n, const uint32 e, const std::string & descr )
+void VoipService::on_call_pstn_status( const uint32 n, const uint32 e, const std::string & descr )
 {
     dummy_log_debug( MODULENAME, "call %u PSTN status %u '%s'", n, e, descr.c_str() );
 
@@ -356,7 +399,7 @@ void VoipService::DialerIO::on_call_pstn_status( const uint32 n, const uint32 e,
         callback_->on_fatal_error( n, static_cast<uint32>( errorcode_ ) );
     }
 }
-void VoipService::DialerIO::on_call_duration( const uint32 n, const uint32 t )
+void VoipService::on_call_duration( const uint32 n, const uint32 t )
 {
     dummy_log_debug( MODULENAME, "call %u dur %u", n, t );
 
@@ -368,7 +411,7 @@ void VoipService::DialerIO::on_call_duration( const uint32 n, const uint32 t )
     callback_->on_call_duration( n, t );
 }
 
-void VoipService::DialerIO::on_call_failure_reason( const uint32 n, const uint32 c )
+void VoipService::on_call_failure_reason( const uint32 n, const uint32 c )
 {
     dummy_log_info( MODULENAME, "call %u failure %u", n, c );
 
@@ -377,7 +420,7 @@ void VoipService::DialerIO::on_call_failure_reason( const uint32 n, const uint32
     errorcode_  = decode_failure_reason( c );
 }
 
-errorcode_e VoipService::DialerIO::decode_failure_reason( const uint32 c )
+errorcode_e VoipService::decode_failure_reason( const uint32 c )
 {
     static const errorcode_e table[] = {
             errorcode_e::NONE,
@@ -403,13 +446,13 @@ errorcode_e VoipService::DialerIO::decode_failure_reason( const uint32 c )
     return errorcode_e::UNKNOWN;
 }
 
-void VoipService::DialerIO::on_call_vaa_input_status( const uint32 n, const uint32 s )
+void VoipService::on_call_vaa_input_status( const uint32 n, const uint32 s )
 {
     dummy_log_debug( MODULENAME, "call %u vaa_input_status %u", n, s );
 
     SCOPE_LOCK( mutex_ );
 
-    if( !has_callback() )
+    if( callback_ == nullptr )
         return;
 
     if( s )
@@ -417,26 +460,5 @@ void VoipService::DialerIO::on_call_vaa_input_status( const uint32 n, const uint
     else
         callback_->on_play_stop( n );
 }
-
-bool VoipService::DialerIO::has_callback() const
-{
-    return callback_ != 0L;
-}
-
-bool VoipService::DialerIO::register_callback( IVoipServiceCallback * callback )
-{
-    SCOPE_LOCK( mutex_ );
-
-    if( !callback )
-        return false;
-
-    if( callback_ )
-        return false;
-
-    callback_   = callback;
-
-    return true;
-}
-
 
 NAMESPACE_VOIP_SERVICE_END
