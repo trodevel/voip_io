@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: object_factory.h 1273 2014-12-18 18:18:51Z serge $
+// $Id: object_factory.h 1276 2014-12-19 18:10:07Z serge $
 
 #ifndef VOIP_SERVICE_OBJECT_FACTORY_H
 #define VOIP_SERVICE_OBJECT_FACTORY_H
@@ -30,6 +30,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 NAMESPACE_VOIP_SERVICE_START
 
 inline void init_call_id( VoipioCallObject * obj, uint32 call_id )
+{
+    obj->call_id = call_id;
+}
+
+inline void init_call_id( VoipioCallbackCallObject * obj, uint32 call_id )
 {
     obj->call_id = call_id;
 }
@@ -83,9 +88,27 @@ inline VoipioCallDuration *create_call_duration( uint32 call_id, uint32 t )
     return res;
 }
 
+inline VoipioCallEnd *create_call_end( uint32 call_id, uint32 errorcode )
+{
+    VoipioCallEnd *res = create_message_t<VoipioCallEnd>( call_id );
+
+    res->errorcode  = errorcode;
+
+    return res;
+}
+
 inline VoipioError *create_error( uint32 call_id, const std::string & error )
 {
     VoipioError *res = create_message_t<VoipioError>( call_id );
+
+    res->error = error;
+
+    return res;
+}
+
+inline VoipioFatalError *create_fatal_error( uint32 call_id, const std::string & error )
+{
+    VoipioFatalError *res = create_message_t<VoipioFatalError>( call_id );
 
     res->error = error;
 

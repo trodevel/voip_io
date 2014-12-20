@@ -19,13 +19,10 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: i_voip_service_callback.h 1272 2014-12-17 18:25:08Z serge $
+// $Id: i_voip_service_callback.h 1276 2014-12-19 18:10:07Z serge $
 
 #ifndef I_VOIP_SERVICE_CALLBACK_H
 #define I_VOIP_SERVICE_CALLBACK_H
-
-#include <string>                   // std::string
-#include "../utils/types.h"         // uint32
 
 #include "namespace_lib.h"          // NAMESPACE_VOIP_SERVICE_START
 
@@ -36,11 +33,9 @@ class VoipioCallbackObject;
 class IVoipServiceCallback
 {
 public:
-
-public:
     virtual ~IVoipServiceCallback() {};
 
-    void consume( const VoipioCallbackObject * req )        = 0;
+    virtual void consume( const VoipioCallbackObject * req )    = 0;
 };
 
 NAMESPACE_VOIP_SERVICE_END

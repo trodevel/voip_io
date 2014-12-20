@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_service.cpp 1273 2014-12-18 18:18:51Z serge $
+// $Id: voip_service.cpp 1276 2014-12-19 18:10:07Z serge $
 
 
 #include "voip_service.h"           // self
@@ -36,12 +36,15 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../utils/wrap_mutex.h"        // SCOPE_LOCK
 #include "../utils/assert.h"            // ASSERT
 
+#include "object_factory.h"             // create_message_t
+
 
 #define MODULENAME      "VoipService"
 
 NAMESPACE_VOIP_SERVICE_START
 
-VoipService::VoipService() :
+VoipService::VoipService():
+        ServerBase( this ),
         sio_( nullptr ),
         callback_( nullptr ),
         state_( UNDEFINED ),
@@ -307,7 +310,7 @@ void VoipService::switch_to_ready_if_possible()
 
     ASSERT( state_ == UNDEFINED );
 
-    state_ == READY;
+    state_ = READY;
 }
 
 void VoipService::send_reject_response( uint32 errorcode, const std::string & descr )
@@ -350,32 +353,32 @@ void VoipService::on_call_status( const uint32 n, const skype_wrap::call_status_
     switch( s )
     {
     case skype_wrap::call_status_e::CANCELLED:
-        callback_->on_call_end( n, static_cast<uint32>( errorcode_ ) );
+        callback_->consume( create_call_end( n, static_cast<uint32>( errorcode_ ) ) );
         break;
 
     case skype_wrap::call_status_e::FINISHED:
-        callback_->on_call_end( n, static_cast<uint32>( errorcode_ ) );
+        callback_->consume( create_call_end( n, static_cast<uint32>( errorcode_ ) ) );
         break;
 
     case skype_wrap::call_status_e::ROUTING:
-        callback_->on_dial( n );
+        callback_->consume( create_message_t<VoipioDial>( n ) );
         break;
 
     case skype_wrap::call_status_e::RINGING:
-        callback_->on_ring( n );
+        callback_->consume( create_message_t<VoipioRing>( n ) );
         break;
 
     case skype_wrap::call_status_e::INPROGRESS:
-        callback_->on_connect( n );
+        callback_->consume( create_message_t<VoipioConnect>( n ) );
         break;
 
     case skype_wrap::call_status_e::NONE:
-        callback_->on_call_end( n, static_cast<uint32>( errorcode_ ) );
+        callback_->consume( create_call_end( n, static_cast<uint32>( errorcode_ ) ) );
         break;
 
     case skype_wrap::call_status_e::FAILED:
     case skype_wrap::call_status_e::REFUSED:
-        callback_->on_error( n, static_cast<uint32>( errorcode_ ) );
+        callback_->consume( create_error( n, "error " + std::to_string( static_cast<uint32>( errorcode_ ) ) ) );
         break;
 
     default:
@@ -389,14 +392,14 @@ void VoipService::on_call_pstn_status( const uint32 n, const uint32 e, const std
 
     SCOPE_LOCK( mutex_ );
 
-    if( !has_callback() )
+    if( callback_ == nullptr )
         return;
 
     if( e != 0 )
     {
         dummy_log_error( MODULENAME, "call %u - got PSTN error %u '%s'", n, e, descr.c_str() );
 
-        callback_->on_fatal_error( n, static_cast<uint32>( errorcode_ ) );
+        callback_->consume( create_fatal_error( n, "error " + descr + ", "+ std::to_string( static_cast<uint32>( errorcode_ ) ) ) );
     }
 }
 void VoipService::on_call_duration( const uint32 n, const uint32 t )
@@ -405,10 +408,8 @@ void VoipService::on_call_duration( const uint32 n, const uint32 t )
 
     SCOPE_LOCK( mutex_ );
 
-    if( !has_callback() )
-        return;
-
-    callback_->on_call_duration( n, t );
+    if( callback_ )
+        callback_->consume( create_call_duration( n, t ) );
 }
 
 void VoipService::on_call_failure_reason( const uint32 n, const uint32 c )
@@ -456,9 +457,9 @@ void VoipService::on_call_vaa_input_status( const uint32 n, const uint32 s )
         return;
 
     if( s )
-        callback_->on_play_start( n );
+        callback_->consume( create_message_t<VoipioPlayStarted>( n ) );
     else
-        callback_->on_play_stop( n );
+        callback_->consume( create_message_t<VoipioPlayStopped>( n ) );
 }
 
 NAMESPACE_VOIP_SERVICE_END
