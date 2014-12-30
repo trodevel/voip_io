@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_service.cpp 1276 2014-12-19 18:10:07Z serge $
+// $Id: voip_service.cpp 1286 2014-12-29 18:17:30Z serge $
 
 
 #include "voip_service.h"           // self
@@ -182,6 +182,9 @@ void VoipService::handle( const VoipioDrop * req )
 
         return;
     }
+
+    if( callback_ )
+        callback_->consume( create_message_t<VoipioDropResponse>( req->call_id ) );
 }
 
 void VoipService::handle( const VoipioPlayFile * req )

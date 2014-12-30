@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: object_factory.h 1277 2014-12-23 18:23:06Z serge $
+// $Id: object_factory.h 1287 2014-12-29 18:17:55Z serge $
 
 #ifndef VOIP_SERVICE_OBJECT_FACTORY_H
 #define VOIP_SERVICE_OBJECT_FACTORY_H
@@ -57,6 +57,27 @@ inline VoipioInitiateCall *create_initiate_call_request( const std::string & par
 
     return res;
 }
+
+inline VoipioPlayFile *create_play_file( uint32 call_id, const std::string & filename )
+{
+    VoipioPlayFile *res = new VoipioPlayFile;
+
+    res->call_id    = call_id;
+    res->filename   = filename;
+
+    return res;
+}
+
+inline VoipioRecordFile *create_record_file( uint32 call_id, const std::string & filename )
+{
+    VoipioRecordFile *res = new VoipioRecordFile;
+
+    res->call_id    = call_id;
+    res->filename   = filename;
+
+    return res;
+}
+
 
 inline VoipioErrorResponse *create_error_response( uint32 errorcode, const std::string & descr )
 {
