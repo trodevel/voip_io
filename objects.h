@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: objects.h 1285 2014-12-29 18:16:51Z serge $
+// $Id: objects.h 1358 2015-01-09 18:13:34Z serge $
 
 #ifndef VOIP_SERVICE_OBJECTS_H
 #define VOIP_SERVICE_OBJECTS_H
@@ -135,6 +135,14 @@ struct VoipioFatalError: public VoipioCallbackCallObject
 {
     std::string     error;
 };
+
+// ******************* WRAPPER for objects not derived from servt::IObject *******************
+
+struct VoipioObjectWrap: public VoipioObject
+{
+    const void  *ptr;
+};
+
 
 NAMESPACE_VOIP_SERVICE_END
 

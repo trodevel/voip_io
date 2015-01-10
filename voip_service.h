@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_service.h 1276 2014-12-19 18:10:07Z serge $
+// $Id: voip_service.h 1358 2015-01-09 18:13:34Z serge $
 
 #ifndef VOIP_SERVICE_H
 #define VOIP_SERVICE_H
@@ -30,6 +30,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "i_voip_service.h"             // IVoipService
 #include "i_voip_service_callback.h"    // IVoipServiceCallback
 #include "../skype_io/i_skype_callback.h"   // ISkypeCallback
+#include "../skype_io/events.h"             // ConnStatusEvent, ...
 #include "../threcon/i_controllable.h"      // IControllable
 #include "../servt/server_t.h"          // ServerT
 #include "voip_types.h"             // errorcode_e
@@ -72,26 +73,33 @@ public:
     void consume( const VoipioObject * req );
 
     // interface skype_wrap::ISkypeCallback
-    virtual void on_conn_status( const skype_wrap::conn_status_e s );
-    virtual void on_user_status( const skype_wrap::user_status_e s );
-    virtual void on_current_user_handle( const std::string & s );
-    virtual void on_unknown( const std::string & s );
-    virtual void on_error( const uint32 error, const std::string & descr );
-    virtual void on_call_status( const uint32 n, const skype_wrap::call_status_e s );
-    virtual void on_call_pstn_status( const uint32 n, const uint32 e, const std::string & descr );
-    virtual void on_call_duration( const uint32 n, const uint32 t );
-    virtual void on_call_failure_reason( const uint32 n, const uint32 c );
-    virtual void on_call_vaa_input_status( const uint32 n, const uint32 s );
+    virtual void consume( const skype_wrap::Event * e );
 
 private:
 
-    // IVoipService interface
+    // ServerT interface
     void handle( const servt::IObject* req );
 
+    // IVoipService interface
     void handle( const VoipioInitiateCall * req );
     void handle( const VoipioDrop * req );
     void handle( const VoipioPlayFile * req );
     void handle( const VoipioRecordFile * req );
+    void handle( const VoipioObjectWrap * req );
+
+    // interface skype_wrap::ISkypeCallback
+    void handle( const skype_wrap::ConnStatusEvent * e );
+    void handle( const skype_wrap::UserStatusEvent * e );
+    void handle( const skype_wrap::CurrentUserHandleEvent * e );
+    void handle( const skype_wrap::ErrorEvent * e );
+    void handle( const skype_wrap::CallStatusEvent * e );
+    void handle( const skype_wrap::CallPstnStatusEvent * e );
+    void handle( const skype_wrap::CallDurationEvent * e );
+    void handle( const skype_wrap::CallFailureReasonEvent * e );
+    void handle( const skype_wrap::CallVaaInputStatusEvent * e );
+
+    void on_unknown( const std::string & s );
+
 
     static errorcode_e decode_failure_reason( uint32 c );
     void switch_to_ready_if_possible();

@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_service.cpp 1286 2014-12-29 18:17:30Z serge $
+// $Id: voip_service.cpp 1358 2015-01-09 18:13:34Z serge $
 
 
 #include "voip_service.h"           // self
@@ -29,7 +29,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "../skype_io/skype_io.h"       // SkypeIo
 #include "../skype_io/event_parser.h"   // EventParser
-#include "../skype_io/events.h"         // BasicCallEvent
 #include "../skype_io/str_helper.h"     // StrHelper
 
 #include "../utils/dummy_logger.h"      // dummy_log
@@ -70,10 +69,22 @@ bool VoipService::init( skype_wrap::SkypeIo * sw )
     return true;
 }
 
+// interface IVoipService
 void VoipService::consume( const VoipioObject * req )
 {
     ServerBase::consume( req );
 }
+
+// interface skype_wrap::ISkypeCallback
+void VoipService::consume( const skype_wrap::Event * e )
+{
+    VoipioObjectWrap * ew = new VoipioObjectWrap;
+
+    ew->ptr = e;
+
+    ServerBase::consume( ew );
+}
+
 
 void VoipService::handle( const servt::IObject* req )
 {
@@ -90,6 +101,10 @@ void VoipService::handle( const servt::IObject* req )
     else if( typeid( *req ) == typeid( VoipioDrop ) )
     {
         handle( dynamic_cast< const VoipioDrop *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( VoipioObjectWrap ) )
+    {
+        handle( dynamic_cast< const VoipioObjectWrap *>( req ) );
     }
     else
     {
@@ -259,6 +274,76 @@ void VoipService::handle( const VoipioRecordFile * req )
     }
 }
 
+void VoipService::handle( const VoipioObjectWrap * req )
+{
+    // private: no mutex lock
+
+    const skype_wrap::Event * ev = static_cast<const skype_wrap::Event*>( req->ptr );
+
+    ASSERT( ev );
+
+    skype_wrap::Event::type_e id = ev->get_type();
+
+    switch( id )
+    {
+    case skype_wrap::Event::CONNSTATUS:
+        handle( static_cast<const skype_wrap::ConnStatusEvent*>( ev ) );
+        break;
+
+    case skype_wrap::Event::USERSTATUS:
+        handle( static_cast<const skype_wrap::UserStatusEvent*>( ev ) );
+        break;
+
+    case skype_wrap::Event::CURRENTUSERHANDLE:
+        handle( static_cast<const skype_wrap::CurrentUserHandleEvent*>( ev ) );
+        break;
+
+    case skype_wrap::Event::USER_ONLINE_STATUS:
+        break;
+
+    case skype_wrap::Event::CALL:
+        break;
+    case skype_wrap::Event::CALL_DURATION:
+        handle( static_cast<const skype_wrap::CallDurationEvent*>( ev ) );
+        break;
+
+    case skype_wrap::Event::CALL_STATUS:
+        handle( static_cast<const skype_wrap::CallStatusEvent*>( ev ) );
+        break;
+
+    case skype_wrap::Event::CALL_PSTN_STATUS:
+        handle( static_cast<const skype_wrap::CallPstnStatusEvent*>( ev ) );
+        break;
+
+    case skype_wrap::Event::CALL_FAILUREREASON:
+        handle( static_cast<const skype_wrap::CallFailureReasonEvent*>( ev ) );
+        break;
+
+    case skype_wrap::Event::CALL_VAA_INPUT_STATUS:
+        handle( static_cast<const skype_wrap::CallVaaInputStatusEvent*>( ev ) );
+        break;
+
+    case skype_wrap::Event::ERROR:
+        handle( static_cast<const skype_wrap::ErrorEvent*>( ev ) );
+        break;
+
+    case skype_wrap::Event::UNDEF:
+        break;
+
+    case skype_wrap::Event::CHAT:
+    case skype_wrap::Event::CHATMEMBER:
+        // simply ignore
+        break;
+
+    case skype_wrap::Event::UNKNOWN:
+    default:
+        on_unknown( "???" );
+        break;
+    }
+
+    delete ev;
+}
+
 bool VoipService::shutdown()
 {
     ServerBase::shutdown();
@@ -281,24 +366,24 @@ bool VoipService::register_callback( IVoipServiceCallback * callback )
     return true;
 }
 
-void VoipService::on_conn_status( const skype_wrap::conn_status_e s )
+void VoipService::handle( const skype_wrap::ConnStatusEvent * e )
 {
-    dummy_log_info( MODULENAME, "conn status %u", s );
+    dummy_log_info( MODULENAME, "conn status %u", e->get_conn_s() );
 
     SCOPE_LOCK( mutex_ );
 
-    cs_ = s;
+    cs_ = e->get_conn_s();
 
     switch_to_ready_if_possible();
 }
 
-void VoipService::on_user_status( const skype_wrap::user_status_e s )
+void VoipService::handle( const skype_wrap::UserStatusEvent * e )
 {
-    dummy_log_info( MODULENAME, "user status %u", s );
+    dummy_log_info( MODULENAME, "user status %u", e->get_user_s() );
 
     SCOPE_LOCK( mutex_ );
 
-    us_ = s;
+    us_ = e->get_user_s();
 
     switch_to_ready_if_possible();
 }
@@ -322,9 +407,9 @@ void VoipService::send_reject_response( uint32 errorcode, const std::string & de
         callback_->consume( create_reject_response( errorcode, descr ) );
 }
 
-void VoipService::on_current_user_handle( const std::string & s )
+void VoipService::handle( const skype_wrap::CurrentUserHandleEvent * e )
 {
-    dummy_log_info( MODULENAME, "current user handle %s", s.c_str() );
+    dummy_log_info( MODULENAME, "current user handle %s", e->get_par_str().c_str() );
 
     SCOPE_LOCK( mutex_ );
 }
@@ -334,18 +419,21 @@ void VoipService::on_unknown( const std::string & s )
 
     SCOPE_LOCK( mutex_ );
 }
-void VoipService::on_error( const uint32 error, const std::string & descr )
+void VoipService::handle( const skype_wrap::ErrorEvent * e )
 {
-    dummy_log_debug( MODULENAME, "error %u '%s'", error, descr.c_str() );
+    dummy_log_debug( MODULENAME, "error %u '%s'", e->get_par_int(), e->get_par_str().c_str() );
 
     SCOPE_LOCK( mutex_ );
 
     if( callback_ )
-        callback_->consume( create_error_response( error, descr ) );
+        callback_->consume( create_error_response( e->get_par_int(), e->get_par_str() ) );
 }
 
-void VoipService::on_call_status( const uint32 n, const skype_wrap::call_status_e s )
+void VoipService::handle( const skype_wrap::CallStatusEvent * e )
 {
+    uint32 n                    = e->get_call_id();
+    skype_wrap::call_status_e s = e->get_call_s();
+
     dummy_log_debug( MODULENAME, "call %u status %s", n, skype_wrap::to_string( s ).c_str() );
 
     SCOPE_LOCK( mutex_ );
@@ -389,8 +477,12 @@ void VoipService::on_call_status( const uint32 n, const skype_wrap::call_status_
         break;
     }
 }
-void VoipService::on_call_pstn_status( const uint32 n, const uint32 e, const std::string & descr )
+void VoipService::handle( const skype_wrap::CallPstnStatusEvent * ev )
 {
+    uint32 n    = ev->get_call_id();
+    uint32 e    = ev->get_par_int();
+    const std::string & descr = ev->get_par_str();
+
     dummy_log_debug( MODULENAME, "call %u PSTN status %u '%s'", n, e, descr.c_str() );
 
     SCOPE_LOCK( mutex_ );
@@ -405,23 +497,23 @@ void VoipService::on_call_pstn_status( const uint32 n, const uint32 e, const std
         callback_->consume( create_fatal_error( n, "error " + descr + ", "+ std::to_string( static_cast<uint32>( errorcode_ ) ) ) );
     }
 }
-void VoipService::on_call_duration( const uint32 n, const uint32 t )
+void VoipService::handle( const skype_wrap::CallDurationEvent * e )
 {
-    dummy_log_debug( MODULENAME, "call %u dur %u", n, t );
+    dummy_log_debug( MODULENAME, "call %u dur %u", e->get_call_id(), e->get_par_int() );
 
     SCOPE_LOCK( mutex_ );
 
     if( callback_ )
-        callback_->consume( create_call_duration( n, t ) );
+        callback_->consume( create_call_duration( e->get_call_id(), e->get_par_int() ) );
 }
 
-void VoipService::on_call_failure_reason( const uint32 n, const uint32 c )
+void VoipService::handle( const skype_wrap::CallFailureReasonEvent * e )
 {
-    dummy_log_info( MODULENAME, "call %u failure %u", n, c );
+    dummy_log_info( MODULENAME, "call %u failure %u", e->get_call_id(), e->get_par_int() );
 
     SCOPE_LOCK( mutex_ );
 
-    errorcode_  = decode_failure_reason( c );
+    errorcode_  = decode_failure_reason( e->get_par_int() );
 }
 
 errorcode_e VoipService::decode_failure_reason( const uint32 c )
@@ -450,8 +542,11 @@ errorcode_e VoipService::decode_failure_reason( const uint32 c )
     return errorcode_e::UNKNOWN;
 }
 
-void VoipService::on_call_vaa_input_status( const uint32 n, const uint32 s )
+void VoipService::handle( const skype_wrap::CallVaaInputStatusEvent * e )
 {
+    uint32 n    = e->get_call_id();
+    uint32 s    = e->get_par_int();
+
     dummy_log_debug( MODULENAME, "call %u vaa_input_status %u", n, s );
 
     SCOPE_LOCK( mutex_ );
