@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_service.cpp 1358 2015-01-09 18:13:34Z serge $
+// $Id: voip_service.cpp 1362 2015-01-11 18:09:43Z serge $
 
 
 #include "voip_service.h"           // self
@@ -186,15 +186,12 @@ void VoipService::handle( const VoipioDrop * req )
         return;
     }
 
-    bool b = sio_->alter_call_hangup( req->call_id );
+    bool b = sio_->set_call_status( req->call_id, skype_wrap::call_status_e::FINISHED );
 
     if( b == false )
     {
-        dummy_log_error( MODULENAME, "failed dropping call: %d", req->call_id );
-
         if( callback_ )
-            callback_->consume( create_error( req->call_id, "failed dropping call" ) );
-
+            callback_->consume( create_error_response( 0, "skype io failed" ) );
         return;
     }
 
