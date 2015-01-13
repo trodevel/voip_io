@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_types.h 1115 2014-10-09 17:19:50Z serge $
+// $Id: voip_types.h 1363 2015-01-12 17:26:45Z serge $
 
 #ifndef VOIP_TYPES_H
 #define VOIP_TYPES_H
@@ -28,16 +28,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 NAMESPACE_VOIP_SERVICE_START
 
-enum class errorcode_e
-{
-    NONE         = 0,
-    UNKNOWN,
-    WRONG_NUMBER,
-    SUBSCRIBER_OFFLINE,
-    REJECTED,
-    HW_ERROR,
-    VOIP_SPECIFIC,
-};
 
 NAMESPACE_VOIP_SERVICE_END
 

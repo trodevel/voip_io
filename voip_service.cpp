@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_service.cpp 1362 2015-01-11 18:09:43Z serge $
+// $Id: voip_service.cpp 1369 2015-01-12 18:27:23Z serge $
 
 
 #include "voip_service.h"           // self
@@ -49,7 +49,7 @@ VoipService::VoipService():
         state_( UNDEFINED ),
         cs_( skype_wrap::conn_status_e::NONE ),
         us_( skype_wrap::user_status_e::NONE ),
-        errorcode_( errorcode_e::NONE )
+        errorcode_( 0 )
 {
 }
 
@@ -195,8 +195,27 @@ void VoipService::handle( const VoipioDrop * req )
         return;
     }
 
+
+    std::string response = sio_->get_response();
+
+    boost::shared_ptr< skype_wrap::Event > ev( skype_wrap::EventParser::to_event( response ) );
+
+    if( ev->get_type() == skype_wrap::Event::CALL_STATUS )
+    {
+        skype_wrap::CallStatusEvent * cse = static_cast<skype_wrap::CallStatusEvent *>( ev.get() );
+        if( cse->get_call_s() == skype_wrap::call_status_e::FINISHED )
+        {
+            if( callback_ )
+                callback_->consume( create_message_t<VoipioDropResponse>( req->call_id ) );
+        }
+    }
+
+    dummy_log_error( MODULENAME, "unexpected response: %s", response.c_str() );
+
     if( callback_ )
-        callback_->consume( create_message_t<VoipioDropResponse>( req->call_id ) );
+        callback_->consume( create_error_response( 0, "unexpected response: " + response ) );
+
+
 }
 
 void VoipService::handle( const VoipioPlayFile * req )
@@ -367,8 +386,6 @@ void VoipService::handle( const skype_wrap::ConnStatusEvent * e )
 {
     dummy_log_info( MODULENAME, "conn status %u", e->get_conn_s() );
 
-    SCOPE_LOCK( mutex_ );
-
     cs_ = e->get_conn_s();
 
     switch_to_ready_if_possible();
@@ -377,8 +394,6 @@ void VoipService::handle( const skype_wrap::ConnStatusEvent * e )
 void VoipService::handle( const skype_wrap::UserStatusEvent * e )
 {
     dummy_log_info( MODULENAME, "user status %u", e->get_user_s() );
-
-    SCOPE_LOCK( mutex_ );
 
     us_ = e->get_user_s();
 
@@ -407,20 +422,14 @@ void VoipService::send_reject_response( uint32 errorcode, const std::string & de
 void VoipService::handle( const skype_wrap::CurrentUserHandleEvent * e )
 {
     dummy_log_info( MODULENAME, "current user handle %s", e->get_par_str().c_str() );
-
-    SCOPE_LOCK( mutex_ );
 }
 void VoipService::on_unknown( const std::string & s )
 {
     dummy_log_warn( MODULENAME, "unknown response: %s", s.c_str() );
-
-    SCOPE_LOCK( mutex_ );
 }
 void VoipService::handle( const skype_wrap::ErrorEvent * e )
 {
     dummy_log_debug( MODULENAME, "error %u '%s'", e->get_par_int(), e->get_par_str().c_str() );
-
-    SCOPE_LOCK( mutex_ );
 
     if( callback_ )
         callback_->consume( create_error_response( e->get_par_int(), e->get_par_str() ) );
@@ -433,19 +442,17 @@ void VoipService::handle( const skype_wrap::CallStatusEvent * e )
 
     dummy_log_debug( MODULENAME, "call %u status %s", n, skype_wrap::to_string( s ).c_str() );
 
-    SCOPE_LOCK( mutex_ );
-
     if( callback_ == nullptr )
         return;
 
     switch( s )
     {
     case skype_wrap::call_status_e::CANCELLED:
-        callback_->consume( create_call_end( n, static_cast<uint32>( errorcode_ ) ) );
+        callback_->consume( create_call_end( n, errorcode_ ) );
         break;
 
     case skype_wrap::call_status_e::FINISHED:
-        callback_->consume( create_call_end( n, static_cast<uint32>( errorcode_ ) ) );
+        callback_->consume( create_call_end( n, errorcode_ ) );
         break;
 
     case skype_wrap::call_status_e::ROUTING:
@@ -461,12 +468,12 @@ void VoipService::handle( const skype_wrap::CallStatusEvent * e )
         break;
 
     case skype_wrap::call_status_e::NONE:
-        callback_->consume( create_call_end( n, static_cast<uint32>( errorcode_ ) ) );
+        callback_->consume( create_call_end( n, errorcode_ ) );
         break;
 
     case skype_wrap::call_status_e::FAILED:
     case skype_wrap::call_status_e::REFUSED:
-        callback_->consume( create_error( n, "error " + std::to_string( static_cast<uint32>( errorcode_ ) ) ) );
+        callback_->consume( create_error( n, "error " + std::to_string( errorcode_ ) + " '" + err_msg_ + "' " ) );
         break;
 
     default:
@@ -482,8 +489,6 @@ void VoipService::handle( const skype_wrap::CallPstnStatusEvent * ev )
 
     dummy_log_debug( MODULENAME, "call %u PSTN status %u '%s'", n, e, descr.c_str() );
 
-    SCOPE_LOCK( mutex_ );
-
     if( callback_ == nullptr )
         return;
 
@@ -491,14 +496,12 @@ void VoipService::handle( const skype_wrap::CallPstnStatusEvent * ev )
     {
         dummy_log_error( MODULENAME, "call %u - got PSTN error %u '%s'", n, e, descr.c_str() );
 
-        callback_->consume( create_fatal_error( n, "error " + descr + ", "+ std::to_string( static_cast<uint32>( errorcode_ ) ) ) );
+        callback_->consume( create_fatal_error( n, "error " + descr + ", "+ std::to_string( errorcode_ ) ) );
     }
 }
 void VoipService::handle( const skype_wrap::CallDurationEvent * e )
 {
     dummy_log_debug( MODULENAME, "call %u dur %u", e->get_call_id(), e->get_par_int() );
-
-    SCOPE_LOCK( mutex_ );
 
     if( callback_ )
         callback_->consume( create_call_duration( e->get_call_id(), e->get_par_int() ) );
@@ -508,35 +511,35 @@ void VoipService::handle( const skype_wrap::CallFailureReasonEvent * e )
 {
     dummy_log_info( MODULENAME, "call %u failure %u", e->get_call_id(), e->get_par_int() );
 
-    SCOPE_LOCK( mutex_ );
-
-    errorcode_  = decode_failure_reason( e->get_par_int() );
+    errorcode_  = e->get_par_int();
+    err_msg_    = decode_failure_reason( errorcode_ );
 }
 
-errorcode_e VoipService::decode_failure_reason( const uint32 c )
+const char* VoipService::decode_failure_reason( const uint32 c )
 {
-    static const errorcode_e table[] = {
-            errorcode_e::NONE,
-            errorcode_e::UNKNOWN,        //    1 CALL 181 FAILUREREASON 1 Miscellaneous error
-            errorcode_e::WRONG_NUMBER,   //    2 CALL 181 FAILUREREASON 2 User or phone number does not exist. Check that a prefix is entered for the phone number, either in the form 003725555555 or +3725555555; the form 3725555555 is incorrect.
-            errorcode_e::SUBSCRIBER_OFFLINE,   //    3 CALL 181 FAILUREREASON 3 User is offline
-            errorcode_e::VOIP_SPECIFIC,  //    4 CALL 181 FAILUREREASON 4 No proxy found
-            errorcode_e::VOIP_SPECIFIC,  //    5 CALL 181 FAILUREREASON 5 Session terminated.
-            errorcode_e::VOIP_SPECIFIC,  //    6 CALL 181 FAILUREREASON 6 No common codec found.
-            errorcode_e::HW_ERROR,       //    7 CALL 181 FAILUREREASON 7 Sound I/O error.
-            errorcode_e::HW_ERROR,       //    8 CALL 181 FAILUREREASON 8 Problem with remote sound device.
-            errorcode_e::REJECTED,       //    9 CALL 181 FAILUREREASON 9 Call blocked by recipient.
-            errorcode_e::REJECTED,       //    10 CALL 181 FAILUREREASON 10 Recipient not a friend.
-            errorcode_e::REJECTED,       //    11 CALL 181 FAILUREREASON 11 Current user not authorized by recipient.
-            errorcode_e::VOIP_SPECIFIC,  //    12 CALL 181 FAILUREREASON 12 Sound recording error.
-            errorcode_e::VOIP_SPECIFIC,  //    13 CALL 181 FAILUREREASON 13 Failure to call a commercial contact.
-            errorcode_e::NONE,           //    14 CALL 181 FAILUREREASON 14 Conference call has been dropped by the host. Note that this does not normally indicate abnormal call termination. Call being dropped for all the participants when the conference host leavs the call is expected behaviour.
+    static const char* table[] =
+    {
+        "",
+        "Miscellaneous error",
+        "User or phone number does not exist. Check that a prefix is entered for the phone number, either in the form 003725555555 or +3725555555; the form 3725555555 is incorrect.",
+        "User is offline",
+        "No proxy found",
+        "Session terminated.",
+        "No common codec found.",
+        "Sound I/O error.",
+        "Problem with remote sound device.",
+        "Call blocked by recipient.",
+        "Recipient not a friend.",
+        "Current user not authorized by recipient.",
+        "Sound recording error.",
+        "Failure to call a commercial contact.",
+        "Conference call has been dropped by the host. Note that this does not normally indicate abnormal call termination. Call being dropped for all the participants when the conference host leavs the call is expected behaviour."
     };
 
-    if( c <= 14 )
-        return table[c];
+    if( c > 14 )
+        return "";
 
-    return errorcode_e::UNKNOWN;
+    return table[ c ];
 }
 
 void VoipService::handle( const skype_wrap::CallVaaInputStatusEvent * e )
@@ -545,8 +548,6 @@ void VoipService::handle( const skype_wrap::CallVaaInputStatusEvent * e )
     uint32 s    = e->get_par_int();
 
     dummy_log_debug( MODULENAME, "call %u vaa_input_status %u", n, s );
-
-    SCOPE_LOCK( mutex_ );
 
     if( callback_ == nullptr )
         return;
