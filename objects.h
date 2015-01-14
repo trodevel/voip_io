@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: objects.h 1370 2015-01-12 18:32:10Z serge $
+// $Id: objects.h 1378 2015-01-13 19:29:50Z serge $
 
 #ifndef VOIP_SERVICE_OBJECTS_H
 #define VOIP_SERVICE_OBJECTS_H
@@ -115,7 +115,19 @@ struct VoipioCallDuration: public VoipioCallbackCallObject
 
 struct VoipioCallEnd: public VoipioCallbackCallObject
 {
-    uint32 errorcode;
+    enum type_e
+    {
+        NONE,
+        CANCELLED,
+        FINISHED,
+        FAILED_PSTN,
+        FAILED,
+        REFUSED
+    };
+
+    type_e          type;
+    uint32          errorcode;
+    std::string     descr;
 };
 
 struct VoipioPlayStarted: public VoipioCallbackCallObject
@@ -126,9 +138,10 @@ struct VoipioPlayStopped: public VoipioCallbackCallObject
 {
 };
 
-struct VoipioCallError: public VoipioCallbackCallObject
+struct VoipioCallErrorResponse: public VoipioCallbackCallObject
 {
-    std::string     error;
+    uint32          errorcode;
+    std::string     descr;
 };
 
 // ******************* WRAPPER for objects not derived from servt::IObject *******************

@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_service.cpp 1369 2015-01-12 18:27:23Z serge $
+// $Id: voip_service.cpp 1378 2015-01-13 19:29:50Z serge $
 
 
 #include "voip_service.h"           // self
@@ -49,7 +49,8 @@ VoipService::VoipService():
         state_( UNDEFINED ),
         cs_( skype_wrap::conn_status_e::NONE ),
         us_( skype_wrap::user_status_e::NONE ),
-        errorcode_( 0 )
+        failure_reason_( 0 ),
+        pstn_status_( 0 )
 {
 }
 
@@ -235,7 +236,7 @@ void VoipService::handle( const VoipioPlayFile * req )
         dummy_log_error( MODULENAME, "failed setting input file: %s", req->filename.c_str() );
 
         if( callback_ )
-            callback_->consume( create_error( req->call_id, "failed setting input file: " + req->filename ) );
+            callback_->consume( create_call_error_response( req->call_id, 0, "failed setting input file: " + req->filename ) );
 
         return;
     }
@@ -249,7 +250,7 @@ void VoipService::handle( const VoipioPlayFile * req )
         dummy_log_error( MODULENAME, "unexpected response: %s", response.c_str() );
 
         if( callback_ )
-            callback_->consume( create_error( req->call_id, "unexpected response: " + response ) );
+            callback_->consume( create_call_error_response( req->call_id, 0, "unexpected response: " + response ) );
 
         return;
     }
@@ -272,7 +273,7 @@ void VoipService::handle( const VoipioRecordFile * req )
         dummy_log_error( MODULENAME, "failed setting output file: %s", req->filename.c_str() );
 
         if( callback_ )
-            callback_->consume( create_error( req->call_id, "failed output input file: " + req->filename ) );
+            callback_->consume( create_call_error_response( req->call_id, 0, "failed output input file: " + req->filename ) );
 
     }
 
@@ -285,7 +286,7 @@ void VoipService::handle( const VoipioRecordFile * req )
         dummy_log_error( MODULENAME, "unexpected response: %s", response.c_str() );
 
         if( callback_ )
-            callback_->consume( create_error( req->call_id, "unexpected response: " + response ) );
+            callback_->consume( create_call_error_response( req->call_id, 0, "unexpected response: " + response ) );
 
     }
 }
@@ -448,11 +449,14 @@ void VoipService::handle( const skype_wrap::CallStatusEvent * e )
     switch( s )
     {
     case skype_wrap::call_status_e::CANCELLED:
-        callback_->consume( create_call_end( n, errorcode_ ) );
+        callback_->consume( create_call_end( n, VoipioCallEnd::CANCELLED ) );
         break;
 
     case skype_wrap::call_status_e::FINISHED:
-        callback_->consume( create_call_end( n, errorcode_ ) );
+        if( pstn_status_ != 0 )
+            callback_->consume( create_call_end( n, VoipioCallEnd::FAILED_PSTN, pstn_status_, pstn_status_msg_ ) );
+        else
+            callback_->consume( create_call_end( n, VoipioCallEnd::FINISHED ) );
         break;
 
     case skype_wrap::call_status_e::ROUTING:
@@ -468,12 +472,15 @@ void VoipService::handle( const skype_wrap::CallStatusEvent * e )
         break;
 
     case skype_wrap::call_status_e::NONE:
-        callback_->consume( create_call_end( n, errorcode_ ) );
+        callback_->consume( create_call_end( n, VoipioCallEnd::NONE ) );
         break;
 
     case skype_wrap::call_status_e::FAILED:
+        callback_->consume( create_call_end( n, VoipioCallEnd::FAILED, failure_reason_, failure_reason_msg_ ) );
+        break;
+
     case skype_wrap::call_status_e::REFUSED:
-        callback_->consume( create_error( n, "error " + std::to_string( errorcode_ ) + " '" + err_msg_ + "' " ) );
+        callback_->consume( create_call_end( n, VoipioCallEnd::REFUSED ) );
         break;
 
     default:
@@ -481,6 +488,7 @@ void VoipService::handle( const skype_wrap::CallStatusEvent * e )
         break;
     }
 }
+
 void VoipService::handle( const skype_wrap::CallPstnStatusEvent * ev )
 {
     uint32 n    = ev->get_call_id();
@@ -489,16 +497,10 @@ void VoipService::handle( const skype_wrap::CallPstnStatusEvent * ev )
 
     dummy_log_debug( MODULENAME, "call %u PSTN status %u '%s'", n, e, descr.c_str() );
 
-    if( callback_ == nullptr )
-        return;
-
-    if( e != 0 )
-    {
-        dummy_log_error( MODULENAME, "call %u - got PSTN error %u '%s'", n, e, descr.c_str() );
-
-        callback_->consume( create_fatal_error( n, "error " + descr + ", "+ std::to_string( errorcode_ ) ) );
-    }
+    pstn_status_        = ev->get_par_int();
+    pstn_status_msg_    = ev->get_par_str();
 }
+
 void VoipService::handle( const skype_wrap::CallDurationEvent * e )
 {
     dummy_log_debug( MODULENAME, "call %u dur %u", e->get_call_id(), e->get_par_int() );
@@ -511,8 +513,8 @@ void VoipService::handle( const skype_wrap::CallFailureReasonEvent * e )
 {
     dummy_log_info( MODULENAME, "call %u failure %u", e->get_call_id(), e->get_par_int() );
 
-    errorcode_  = e->get_par_int();
-    err_msg_    = decode_failure_reason( errorcode_ );
+    failure_reason_     = e->get_par_int();
+    failure_reason_msg_ = decode_failure_reason( failure_reason_ );
 }
 
 const char* VoipService::decode_failure_reason( const uint32 c )

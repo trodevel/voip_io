@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_service.h 1363 2015-01-12 17:26:45Z serge $
+// $Id: voip_service.h 1371 2015-01-13 17:59:32Z serge $
 
 #ifndef VOIP_SERVICE_H
 #define VOIP_SERVICE_H
@@ -123,8 +123,10 @@ private:
 
     skype_wrap::conn_status_e   cs_;
     skype_wrap::user_status_e   us_;
-    uint32                      errorcode_;
-    std::string                 err_msg_;
+    uint32                      failure_reason_;
+    std::string                 failure_reason_msg_;
+    uint32                      pstn_status_;
+    std::string                 pstn_status_msg_;
 };
 
 NAMESPACE_VOIP_SERVICE_END
