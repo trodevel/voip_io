@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_service.cpp 1378 2015-01-13 19:29:50Z serge $
+// $Id: voip_service.cpp 1385 2015-01-14 18:19:44Z serge $
 
 
 #include "voip_service.h"           // self
@@ -209,6 +209,11 @@ void VoipService::handle( const VoipioDrop * req )
             if( callback_ )
                 callback_->consume( create_message_t<VoipioDropResponse>( req->call_id ) );
         }
+        else
+        {
+            dummy_log_debug( MODULENAME, "dropping, current state: %s", skype_wrap::to_string( cse->get_call_s() ).c_str() );
+        }
+        return;
     }
 
     dummy_log_error( MODULENAME, "unexpected response: %s", response.c_str() );
