@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Id: voip_service.cpp 1385 2015-01-14 18:19:44Z serge $
+// $Id: voip_service.cpp 1388 2015-01-15 17:52:32Z serge $
 
 
 #include "voip_service.h"           // self
@@ -171,6 +171,9 @@ void VoipService::handle( const VoipioInitiateCall * req )
     uint32 status  = static_cast<uint32>( status_code );
 
     dummy_log_debug( MODULENAME, "call initiated: %u, status %s", call_id, skype_wrap::to_string( status_code ).c_str() );
+
+    failure_reason_ = 0;
+    pstn_status_    = 0;
 
     if( callback_ )
         callback_->consume( create_initiate_call_response( call_id, status ) );
