@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Id: objects.h 1378 2015-01-13 19:29:50Z serge $
+// $Revision: 1404 $ $Date:: 2015-01-16 #$ $Author: serge $
 
 #ifndef VOIP_SERVICE_OBJECTS_H
 #define VOIP_SERVICE_OBJECTS_H
