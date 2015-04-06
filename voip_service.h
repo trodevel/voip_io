@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1404 $ $Date:: 2015-01-16 #$ $Author: serge $
+// $Revision: 1697 $ $Date:: 2015-04-02 #$ $Author: serge $
 
 #ifndef VOIP_SERVICE_H
 #define VOIP_SERVICE_H
@@ -105,12 +105,29 @@ private:
     void switch_to_ready_if_possible();
     void send_reject_response( uint32 errorcode, const std::string & descr );
 
+    void handle_in_state_none( const skype_wrap::Event * ev );
+    void handle_in_state_w_ic( const skype_wrap::Event * ev );
+    void handle_in_state_w_dr( const skype_wrap::Event * ev );
+    void handle_in_state_w_pl( const skype_wrap::Event * ev );
+    void handle_in_state_w_re( const skype_wrap::Event * ev );
+
+    void callback_consume( const VoipioCallbackObject * req );
+
 private:
 
     enum state_e
     {
         UNDEFINED,
         READY
+    };
+
+    enum request_state_e
+    {
+        NONE,
+        WAIT_INIT_CALL_RESP,
+        WAIT_DROP_RESP,
+        WAIT_PLAY_RESP,
+        WAIT_REC_RESP
     };
 
 private:
@@ -120,6 +137,7 @@ private:
     IVoipServiceCallback        * callback_;
 
     state_e                     state_;
+    request_state_e             req_state_;
 
     skype_wrap::conn_status_e   cs_;
     skype_wrap::user_status_e   us_;
