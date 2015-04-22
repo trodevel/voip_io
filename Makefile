@@ -9,23 +9,6 @@ MODE ?= debug
 
 ###################################################################
 
-BOOST_PATH := $(shell echo $$BOOST_PATH)
-
-ifeq (,$(BOOST_PATH))
-    $(error 'please define path to boost $$BOOST_PATH')
-endif
-
-###################################################################
-
-BOOST_LIB_SYSTEM := libboost_system.a
-BOOST_LIB_THREAD := libboost_thread.a
-
-
-BOOST_INC=$(BOOST_PATH)
-BOOST_LIB=$(BOOST_PATH)/stage/lib
-
-###################################################################
-
 LIBNAME=libvoip_io
 
 ###################################################################

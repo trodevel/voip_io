@@ -19,20 +19,17 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1697 $ $Date:: 2015-04-02 #$ $Author: serge $
+// $Revision: 1714 $ $Date:: 2015-04-21 #$ $Author: serge $
 
 
 #include "voip_service.h"           // self
-
-#include <boost/bind.hpp>
-#include <boost/shared_ptr.hpp>     // boost::shared_ptr
 
 #include "../skype_io/skype_io.h"       // SkypeIo
 #include "../skype_io/event_parser.h"   // EventParser
 #include "../skype_io/str_helper.h"     // StrHelper
 
 #include "../utils/dummy_logger.h"      // dummy_log
-#include "../utils/wrap_mutex.h"        // SCOPE_LOCK
+#include "../utils/mutex_helper.h"      // MUTEX_SCOPE_LOCK
 #include "../utils/assert.h"            // ASSERT
 
 #include "object_factory.h"             // create_message_t
@@ -61,7 +58,7 @@ VoipService::~VoipService()
 
 bool VoipService::init( skype_wrap::SkypeIo * sw )
 {
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     if( sw == 0L )
         return false;
@@ -90,7 +87,7 @@ void VoipService::consume( const skype_wrap::Event * e )
 
 void VoipService::handle( const servt::IObject* req )
 {
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     if( typeid( *req ) == typeid( VoipioInitiateCall ) )
     {
@@ -421,7 +418,7 @@ bool VoipService::shutdown()
 
 bool VoipService::register_callback( IVoipServiceCallback * callback )
 {
-    SCOPE_LOCK( mutex_ );
+    MUTEX_SCOPE_LOCK( mutex_ );
 
     if( !callback )
         return false;

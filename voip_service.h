@@ -19,13 +19,12 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1697 $ $Date:: 2015-04-02 #$ $Author: serge $
+// $Revision: 1714 $ $Date:: 2015-04-21 #$ $Author: serge $
 
 #ifndef VOIP_SERVICE_H
 #define VOIP_SERVICE_H
 
 #include <string>                   // std::string
-#include <boost/thread.hpp>         // boost::mutex
 
 #include "i_voip_service.h"             // IVoipService
 #include "i_voip_service_callback.h"    // IVoipServiceCallback
@@ -33,7 +32,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../skype_io/events.h"             // ConnStatusEvent, ...
 #include "../threcon/i_controllable.h"      // IControllable
 #include "../servt/server_t.h"          // ServerT
-#include "voip_types.h"             // errorcode_e
+#include "voip_types.h"                 // errorcode_e
 
 #include "objects.h"                    // VoipioObject
 #include "namespace_lib.h"          // NAMESPACE_VOIP_SERVICE_START
@@ -131,7 +130,7 @@ private:
     };
 
 private:
-    mutable boost::mutex        mutex_;
+    mutable std::mutex          mutex_;
 
     skype_wrap::SkypeIo         * sio_;
     IVoipServiceCallback        * callback_;
