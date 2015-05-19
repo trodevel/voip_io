@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1714 $ $Date:: 2015-04-21 #$ $Author: serge $
+// $Revision: 1753 $ $Date:: 2015-05-19 #$ $Author: serge $
 
 #ifndef VOIP_SERVICE_H
 #define VOIP_SERVICE_H
@@ -112,6 +112,8 @@ private:
 
     void callback_consume( const VoipioCallbackObject * req );
 
+    uint32_t get_next_id();
+
 private:
 
     enum state_e
@@ -137,6 +139,8 @@ private:
 
     state_e                     state_;
     request_state_e             req_state_;
+    uint32_t                    req_hash_id_;
+
 
     skype_wrap::conn_status_e   cs_;
     skype_wrap::user_status_e   us_;
@@ -144,6 +148,8 @@ private:
     std::string                 failure_reason_msg_;
     uint32                      pstn_status_;
     std::string                 pstn_status_msg_;
+
+    uint32_t                    next_id_;
 };
 
 NAMESPACE_VOIP_SERVICE_END

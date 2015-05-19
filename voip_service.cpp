@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1714 $ $Date:: 2015-04-21 #$ $Author: serge $
+// $Revision: 1753 $ $Date:: 2015-05-19 #$ $Author: serge $
 
 
 #include "voip_service.h"           // self
@@ -45,10 +45,12 @@ VoipService::VoipService():
         callback_( nullptr ),
         state_( UNDEFINED ),
         req_state_( NONE ),
+        req_hash_id_( 0 ),
         cs_( skype_wrap::conn_status_e::NONE ),
         us_( skype_wrap::user_status_e::NONE ),
         failure_reason_( 0 ),
-        pstn_status_( 0 )
+        pstn_status_( 0 ),
+        next_id_( 0 )
 {
 }
 
@@ -127,7 +129,9 @@ void VoipService::handle( const VoipioInitiateCall * req )
 
     ASSERT( req_state_ == NONE );
 
-    bool b = sio_->call( req->party );
+    uint32_t hash_id    = get_next_id();
+
+    bool b = sio_->call( req->party, hash_id );
 
     if( b == false )
     {
@@ -138,7 +142,8 @@ void VoipService::handle( const VoipioInitiateCall * req )
         return;
     }
 
-    req_state_  = WAIT_INIT_CALL_RESP;
+    req_state_      = WAIT_INIT_CALL_RESP;
+    req_hash_id_    = hash_id;
 }
 
 void VoipService::handle( const VoipioDrop * req )
@@ -153,7 +158,9 @@ void VoipService::handle( const VoipioDrop * req )
 
     ASSERT( req_state_ == NONE );
 
-    bool b = sio_->set_call_status( req->call_id, skype_wrap::call_status_e::FINISHED );
+    uint32_t hash_id    = get_next_id();
+
+    bool b = sio_->set_call_status( req->call_id, skype_wrap::call_status_e::FINISHED, hash_id );
 
     if( b == false )
     {
@@ -161,7 +168,8 @@ void VoipService::handle( const VoipioDrop * req )
         return;
     }
 
-    req_state_  = WAIT_DROP_RESP;
+    req_state_      = WAIT_DROP_RESP;
+    req_hash_id_    = hash_id;
 }
 
 void VoipService::handle( const VoipioPlayFile * req )
@@ -176,7 +184,9 @@ void VoipService::handle( const VoipioPlayFile * req )
 
     ASSERT( req_state_ == NONE );
 
-    bool b = sio_->alter_call_set_input_file( req->call_id, req->filename );
+    uint32_t hash_id    = get_next_id();
+
+    bool b = sio_->alter_call_set_input_file( req->call_id, req->filename, hash_id );
 
     if( b == false )
     {
@@ -187,7 +197,8 @@ void VoipService::handle( const VoipioPlayFile * req )
         return;
     }
 
-    req_state_  = WAIT_PLAY_RESP;
+    req_state_      = WAIT_PLAY_RESP;
+    req_hash_id_    = hash_id;
 }
 
 void VoipService::handle( const VoipioRecordFile * req )
@@ -202,7 +213,9 @@ void VoipService::handle( const VoipioRecordFile * req )
 
     ASSERT( req_state_ == NONE );
 
-    bool b = sio_->alter_call_set_output_file( req->call_id, req->filename );
+    uint32_t hash_id    = get_next_id();
+
+    bool b = sio_->alter_call_set_output_file( req->call_id, req->filename, hash_id );
 
     if( b == false )
     {
@@ -213,7 +226,8 @@ void VoipService::handle( const VoipioRecordFile * req )
         return;
     }
 
-    req_state_  = WAIT_REC_RESP;
+    req_state_      = WAIT_REC_RESP;
+    req_hash_id_    = hash_id;
 }
 
 void VoipService::handle( const VoipioObjectWrap * req )
@@ -223,6 +237,39 @@ void VoipService::handle( const VoipioObjectWrap * req )
     const skype_wrap::Event * ev = static_cast<const skype_wrap::Event*>( req->ptr );
 
     ASSERT( ev );
+
+    switch( req_state_ )
+    {
+    case WAIT_INIT_CALL_RESP:
+    case WAIT_DROP_RESP:
+    case WAIT_PLAY_RESP:
+    case WAIT_REC_RESP:
+    {
+        if( ev->has_hash_id() == false )
+        {
+            dummy_log_info( MODULENAME, "ignoring a non-response notification: %s", skype_wrap::StrHelper::to_string( ev->get_type() ).c_str() );
+
+            delete ev;
+
+            return;
+        }
+
+        if( ev->get_hash_id() != req_hash_id_ )
+        {
+            dummy_log_error( MODULENAME, "unexpected hash id: %u, expected %u, msg %s, ignoring",
+                    ev->get_hash_id(), req_hash_id_,
+                    skype_wrap::StrHelper::to_string( ev->get_type() ).c_str() );
+
+            delete ev;
+
+            return;
+        }
+
+    }
+        break;
+    default:
+        break;
+    }
 
     switch( req_state_ )
     {
@@ -314,7 +361,8 @@ void VoipService::handle_in_state_w_ic( const skype_wrap::Event * ev )
 {
     // private: no mutex lock
 
-    req_state_  = NONE;
+    req_state_      = NONE;
+    req_hash_id_    = 0;
 
     if( ev->get_type() != skype_wrap::Event::CALL_STATUS )
     {
@@ -353,7 +401,8 @@ void VoipService::handle_in_state_w_dr( const skype_wrap::Event * ev )
 {
     // private: no mutex lock
 
-    req_state_  = NONE;
+    req_state_      = NONE;
+    req_hash_id_    = 0;
 
     if( ev->get_type() == skype_wrap::Event::CALL_STATUS )
     {
@@ -378,7 +427,8 @@ void VoipService::handle_in_state_w_pl( const skype_wrap::Event * ev )
 {
     // private: no mutex lock
 
-    req_state_  = NONE;
+    req_state_      = NONE;
+    req_hash_id_    = 0;
 
     if( ev->get_type() != skype_wrap::Event::ALTER_CALL_SET_INPUT_FILE )
     {
@@ -396,7 +446,8 @@ void VoipService::handle_in_state_w_re( const skype_wrap::Event * ev )
 {
     // private: no mutex lock
 
-    req_state_  = NONE;
+    req_state_      = NONE;
+    req_hash_id_    = 0;
 
     if( ev->get_type() != skype_wrap::Event::ALTER_CALL_SET_OUTPUT_FILE )
     {
@@ -603,6 +654,11 @@ void VoipService::callback_consume( const VoipioCallbackObject * req )
 {
     if( callback_ )
         callback_->consume( req );
+}
+
+uint32_t VoipService::get_next_id()
+{
+    return ++next_id_;
 }
 
 NAMESPACE_VOIP_SERVICE_END
