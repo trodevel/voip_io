@@ -9,6 +9,13 @@ MODE ?= debug
 
 ###################################################################
 
+GDK_LIB=$(shell pkg-config --libs dbus-1)
+EXT_LIBS=-lcurl -lmp3lame -lsndfile $(BOOST_LIBS) $(GDK_LIB)
+
+###################################################################
+
+PROJECT := voip_io
+
 LIBNAME=libvoip_io
 
 ###################################################################
@@ -19,7 +26,6 @@ ifeq "$(MODE)" "debug"
 
     CFLAGS := -Wall -std=c++0x -ggdb -g3
     LFLAGS := -Wall -lstdc++ -lrt -ldl -lm -g
-#    LFLAGS_TEST := -Wall -lstdc++ -lrt -ldl -g -L. $(BINDIR)/$(LIBNAME).a $(BINDIR)/libutils.a -lm
     LFLAGS_TEST := -Wall -lstdc++ -lrt -ldl -g -L. $(BINDIR)/$(LIBNAME).a -lm
 
     TARGET=example
@@ -29,16 +35,10 @@ else
 
     CFLAGS := -Wall -std=c++0x
     LFLAGS := -Wall -lstdc++ -lrt -ldl -lm
-#    LFLAGS_TEST := -Wall -lstdc++ -lrt -ldl -L. $(BINDIR)/$(LIBNAME).a $(BINDIR)/libutils.a -lm
     LFLAGS_TEST := -Wall -lstdc++ -lrt -ldl -L. $(BINDIR)/$(LIBNAME).a -lm
 
     TARGET=example
 endif
-
-###################################################################
-
-WARN = -W -Wall -Wshadow -Wreturn-type -Wcomment -Wtrigraphs -Wformat -Wparentheses -Wpointer-arith -Wuninitialized -O
-CDBG = -g $(CWARN) -fno-inline
 
 ###################################################################
 
@@ -68,6 +68,9 @@ EXE=
 SRCC = voip_service.cpp
 OBJS = $(patsubst %.cpp,$(OBJDIR)/%.o,$(SRCC))
 
+LIB_NAMES = skype_io utils
+LIBS = $(patsubst %,$(BINDIR)/lib%.a,$(LIB_NAMES))
+
 all: static
 
 static: $(TARGET)
@@ -85,15 +88,21 @@ $(BINDIR)/$(STATICLIB): $(OBJS)
 
 $(OBJDIR)/%.o: %.cpp
 	@echo compiling $<
-	$(CC) $(CFLAGS) $(CDBG) -DPIC -c -o $@ $< $(INCL)
+	$(CC) $(CFLAGS) -DPIC -c -o $@ $< $(INCL)
 
 $(TARGET): $(BINDIR) $(BINDIR)/$(TARGET)
 	ln -sf $(BINDIR)/$(TARGET) $(TARGET)
 	@echo "$@ uptodate - ${MODE}"
 
-$(BINDIR)/$(TARGET): $(OBJDIR)/$(TARGET).o $(OBJS) $(BINDIR)/$(STATICLIB)
-	$(CC) $(CFLAGS) $(CDBG) -o $@ $(OBJDIR)/$(TARGET).o $(LFLAGS_TEST)
-	
+$(BINDIR)/$(TARGET): $(LIBS) $(OBJDIR)/$(TARGET).o $(OBJS) $(BINDIR)/$(STATICLIB)
+	$(CC) $(CFLAGS) -o $@ $(OBJDIR)/$(TARGET).o $(BINDIR)/$(LIBNAME).a $(LIBS) $(EXT_LIBS) $(LFLAGS_TEST)
+
+$(LIBS):
+	for s in $(LIB_NAMES); do \
+		cd ../$$s; make; cd ../$(PROJECT); \
+		ln -sf ../../$$s/$(BINDIR)/lib$$s.a $(BINDIR); \
+		done;
+
 $(BINDIR):
 	@ mkdir -p $(OBJDIR)
 	@ mkdir -p $(BINDIR)
