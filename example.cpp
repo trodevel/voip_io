@@ -19,10 +19,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1754 $ $Date:: 2015-05-19 #$ $Author: serge $
+// $Revision: 1766 $ $Date:: 2015-05-20 #$ $Author: serge $
 
 #include <iostream>         // cout
 #include <typeinfo>
+#include <sstream>          // stringstream
 
 #include "i_voip_service_callback.h"    // IVoipServiceCallback
 #include "i_voip_service.h"             // IVoipService
@@ -35,8 +36,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 class Callback: virtual public voip_service::IVoipServiceCallback
 {
 public:
-    Callback():
-        call_id_( 0 )
+    Callback()
     {
     }
 
@@ -45,50 +45,69 @@ public:
     {
         if( typeid( *req ) == typeid( voip_service::VoipioInitiateCallResponse ) )
         {
-            // handle( dynamic_cast< const voip_service::VoipioInitiateCallResponse *>( req ) );
-
-            call_id_    = dynamic_cast< const voip_service::VoipioInitiateCallResponse *>( req )->call_id;
+            std::cout << "got VoipioInitiateCallResponse "
+                    << dynamic_cast< const voip_service::VoipioInitiateCallResponse *>( req )->call_id
+                    << std::endl;
         }
         else if( typeid( *req ) == typeid( voip_service::VoipioErrorResponse ) )
         {
-            // handle( dynamic_cast< const voip_service::VoipioErrorResponse *>( req ) );
+            std::cout << "got VoipioErrorResponse "
+                    << dynamic_cast< const voip_service::VoipioErrorResponse *>( req )->descr
+                    << std::endl;
         }
         else if( typeid( *req ) == typeid( voip_service::VoipioDropResponse ) )
         {
-            // handle( dynamic_cast< const voip_service::VoipioDropResponse *>( req ) );
+            std::cout << "got VoipioDropResponse "
+                    << dynamic_cast< const voip_service::VoipioDropResponse *>( req )->call_id
+                    << std::endl;
         }
         else if( typeid( *req ) == typeid( voip_service::VoipioCallErrorResponse ) )
         {
-            // handle( dynamic_cast< const voip_service::VoipioCallErrorResponse *>( req ) );
+            std::cout << "got VoipioCallErrorResponse "
+                    << dynamic_cast< const voip_service::VoipioCallErrorResponse *>( req )->call_id
+                    << std::endl;
         }
         else if( typeid( *req ) == typeid( voip_service::VoipioCallEnd ) )
         {
-            // handle( dynamic_cast< const voip_service::VoipioCallEnd *>( req ) );
-            call_id_    = 0;
+            std::cout << "got VoipioCallEnd "
+                    << dynamic_cast< const voip_service::VoipioCallEnd *>( req )->call_id
+                    << std::endl;
         }
         else if( typeid( *req ) == typeid( voip_service::VoipioDial ) )
         {
-            // handle( dynamic_cast< const voip_service::VoipioDial *>( req ) );
+            std::cout << "got VoipioDial "
+                    << dynamic_cast< const voip_service::VoipioDial *>( req )->call_id
+                    << std::endl;
         }
         else if( typeid( *req ) == typeid( voip_service::VoipioRing ) )
         {
-            // handle( dynamic_cast< const voip_service::VoipioRing *>( req ) );
+            std::cout << "got VoipioRing "
+                    << dynamic_cast< const voip_service::VoipioRing *>( req )->call_id
+                    << std::endl;
         }
         else if( typeid( *req ) == typeid( voip_service::VoipioConnect ) )
         {
-            // handle( dynamic_cast< const voip_service::VoipioConnect *>( req ) );
+            std::cout << "got VoipioConnect "
+                    << dynamic_cast< const voip_service::VoipioConnect *>( req )->call_id
+                    << std::endl;
         }
         else if( typeid( *req ) == typeid( voip_service::VoipioCallDuration ) )
         {
-            // handle( dynamic_cast< const voip_service::VoipioCallDuration *>( req ) );
+            std::cout << "got VoipioCallDuration "
+                    << dynamic_cast< const voip_service::VoipioCallDuration *>( req )->call_id
+                    << std::endl;
         }
         else if( typeid( *req ) == typeid( voip_service::VoipioPlayStarted ) )
         {
-            // handle( dynamic_cast< const voip_service::VoipioPlayStarted *>( req ) );
+            std::cout << "got VoipioPlayStarted "
+                    << dynamic_cast< const voip_service::VoipioPlayStarted *>( req )->call_id
+                    << std::endl;
         }
         else if( typeid( *req ) == typeid( voip_service::VoipioPlayStopped ) )
         {
-            // handle( dynamic_cast< const voip_service::VoipioPlayStopped *>( req ) );
+            std::cout << "got VoipioPlayStopped "
+                    << dynamic_cast< const voip_service::VoipioPlayStopped *>( req )->call_id
+                    << std::endl;
         }
         else
         {
@@ -98,15 +117,15 @@ public:
         delete req;
     }
 
-private:
-
-    uint32_t    call_id_;
-
 };
 
 void control_thread( voip_service::VoipService * voips )
 {
     std::cout << "type exit or quit to quit: " << std::endl;
+    std::cout << "call <party>" << std::endl;
+    std::cout << "drop <call_id>" << std::endl;
+    std::cout << "play <call_id> <file>" << std::endl;
+    std::cout << "rec  <call_id> <file>" << std::endl;
 
     std::string input;
 
@@ -116,25 +135,58 @@ void control_thread( voip_service::VoipService * voips )
 
         std::getline( std::cin, input );
 
-        std::cout << "command: " << input << std::endl;
+        std::cout << "your input: " << input << std::endl;
 
-        if( input == "exit" || input == "quit" )
-            break;
+        std::string cmd;
 
-        /*
-        bool b = voips->consume( input );
-
-        if( b == false )
+        std::stringstream stream( input );
+        if( stream >> cmd )
         {
-            std::cout << "ERROR: cannot process command '" << input << "'" << std::endl;
+            if( cmd == "exit" || cmd == "quit" )
+            {
+                break;
+            }
+            else if( cmd == "call" )
+            {
+                std::string s;
+                stream >> s;
+
+                voips->consume( voip_service::create_initiate_call_request( s ) );
+            }
+            else if( cmd == "drop" )
+            {
+                int call_id;
+                stream >> call_id;
+
+                voips->consume( voip_service::create_message_t<voip_service::VoipioDrop>( call_id ) );
+            }
+            else if( cmd == "play" )
+            {
+                int call_id;
+                std::string filename;
+                stream >> call_id >> filename;
+
+                voips->consume( voip_service::create_play_file( call_id, filename ) );
+            }
+            else if( cmd == "rec" )
+            {
+                int call_id;
+                std::string filename;
+                stream >> call_id >> filename;
+
+                voips->consume( voip_service::create_record_file( call_id, filename ) );
+            }
+            else
+                std::cout << "ERROR: unknown command '" << cmd << "'" << std::endl;
         }
-        */
+        else
+        {
+            std::cout << "ERROR: cannot read command" << std::endl;
+        }
 
     };
 
     std::cout << "exiting ..." << std::endl;
-
-    //voips->shutdown();
 }
 
 
@@ -146,27 +198,40 @@ int main( int argc, char **argv )
     skype_wrap::SkypeIo sio;
     voip_service::VoipService  voips;
 
-    bool b = sio.init();
-
-    if( !b )
     {
-        std::cout << "cannot initialize SkypeIo - " << sio.get_error_msg() << std::endl;
-        return 0;
+        bool b = voips.init( & sio );
+        if( !b )
+        {
+            std::cout << "cannot initialize VoipService" << std::endl;
+            return 0;
+        }
     }
 
-    b = voips.init( & sio );
     {
-        std::cout << "cannot initialize VoipService" << std::endl;
-        return 0;
+        bool b = sio.init();
+
+        if( !b )
+        {
+            std::cout << "cannot initialize SkypeIo - " << sio.get_error_msg() << std::endl;
+            return 0;
+        }
+
+        sio.register_callback( & voips );
     }
 
     Callback test;
 
     voips.register_callback( &test );
+    voips.start();
 
     std::thread t( std::bind( &control_thread, &voips ) );
 
     t.join();
+
+
+    sio.shutdown();
+
+    voips.VoipService::shutdown();
 
     std::cout << "Done! =)" << std::endl;
 

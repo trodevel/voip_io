@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1753 $ $Date:: 2015-05-19 #$ $Author: serge $
+// $Revision: 1765 $ $Date:: 2015-05-20 #$ $Author: serge $
 
 #ifndef VOIP_SERVICE_H
 #define VOIP_SERVICE_H
@@ -67,6 +67,8 @@ public:
 
     // interface threcon::IControllable
     virtual bool shutdown();
+
+    virtual void on_server_thread_exit();
 
     // interface IVoipService
     void consume( const VoipioObject * req );

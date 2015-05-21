@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1753 $ $Date:: 2015-05-19 #$ $Author: serge $
+// $Revision: 1765 $ $Date:: 2015-05-20 #$ $Author: serge $
 
 
 #include "voip_service.h"           // self
@@ -98,6 +98,10 @@ void VoipService::handle( const servt::IObject* req )
     else if( typeid( *req ) == typeid( VoipioPlayFile ) )
     {
         handle( dynamic_cast< const VoipioPlayFile *>( req ) );
+    }
+    else if( typeid( *req ) == typeid( VoipioRecordFile ) )
+    {
+        handle( dynamic_cast< const VoipioRecordFile *>( req ) );
     }
     else if( typeid( *req ) == typeid( VoipioDrop ) )
     {
@@ -464,7 +468,12 @@ bool VoipService::shutdown()
 {
     ServerBase::shutdown();
 
-    return sio_->shutdown();
+    //return sio_->shutdown();
+    return true;
+}
+
+void VoipService::on_server_thread_exit()
+{
 }
 
 bool VoipService::register_callback( IVoipServiceCallback * callback )

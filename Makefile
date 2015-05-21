@@ -10,7 +10,7 @@ MODE ?= debug
 ###################################################################
 
 GDK_LIB=$(shell pkg-config --libs dbus-1)
-EXT_LIBS=-lcurl -lmp3lame -lsndfile $(BOOST_LIBS) $(GDK_LIB)
+EXT_LIBS=$(BOOST_LIBS) $(GDK_LIB)
 
 ###################################################################
 
