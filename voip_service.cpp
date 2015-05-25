@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1765 $ $Date:: 2015-05-20 #$ $Author: serge $
+// $Revision: 1774 $ $Date:: 2015-05-21 #$ $Author: serge $
 
 
 #include "voip_service.h"           // self
@@ -466,14 +466,11 @@ void VoipService::handle_in_state_w_re( const skype_wrap::Event * ev )
 
 bool VoipService::shutdown()
 {
-    ServerBase::shutdown();
+    dummy_log_debug( MODULENAME, "shutdown()" );
 
-    //return sio_->shutdown();
-    return true;
-}
+    bool b = ServerBase::shutdown();
 
-void VoipService::on_server_thread_exit()
-{
+    return b;
 }
 
 bool VoipService::register_callback( IVoipServiceCallback * callback )
