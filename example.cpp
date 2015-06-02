@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1766 $ $Date:: 2015-05-20 #$ $Author: serge $
+// $Revision: 1805 $ $Date:: 2015-06-01 #$ $Author: serge $
 
 #include <iostream>         // cout
 #include <typeinfo>
@@ -30,7 +30,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "voip_service.h"               // VoipService
 #include "object_factory.h"             // voip_service::create_message_t
 
-#include "../skype_io/skype_io.h"       // SkypeIo
+#include "../skype_service/skype_service.h"     // SkypeService
 #include "../utils/dummy_logger.h"      // dummy_log_set_log_level
 
 class Callback: virtual public voip_service::IVoipServiceCallback
@@ -195,11 +195,11 @@ int main( int argc, char **argv )
 {
     dummy_logger::set_log_level( log_levels_log4j::TRACE );
 
-    skype_wrap::SkypeIo sio;
+    skype_service::SkypeService service;
     voip_service::VoipService  voips;
 
     {
-        bool b = voips.init( & sio );
+        bool b = voips.init( & service );
         if( !b )
         {
             std::cout << "cannot initialize VoipService" << std::endl;
@@ -208,15 +208,15 @@ int main( int argc, char **argv )
     }
 
     {
-        bool b = sio.init();
+        bool b = service.init();
 
         if( !b )
         {
-            std::cout << "cannot initialize SkypeIo - " << sio.get_error_msg() << std::endl;
+            std::cout << "cannot initialize SkypeService - " << service.get_error_msg() << std::endl;
             return 0;
         }
 
-        sio.register_callback( & voips );
+        service.register_callback( & voips );
     }
 
     Callback test;
@@ -229,7 +229,7 @@ int main( int argc, char **argv )
     t.join();
 
 
-    sio.shutdown();
+    service.shutdown();
 
     voips.VoipService::shutdown();
 

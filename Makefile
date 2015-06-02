@@ -68,7 +68,7 @@ EXE=
 SRCC = voip_service.cpp
 OBJS = $(patsubst %.cpp,$(OBJDIR)/%.o,$(SRCC))
 
-LIB_NAMES = skype_io utils
+LIB_NAMES = skype_service skype_io utils
 LIBS = $(patsubst %,$(BINDIR)/lib%.a,$(LIB_NAMES))
 
 all: static

@@ -19,14 +19,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1774 $ $Date:: 2015-05-21 #$ $Author: serge $
+// $Revision: 1805 $ $Date:: 2015-06-01 #$ $Author: serge $
 
 
 #include "voip_service.h"           // self
 
-#include "../skype_io/skype_io.h"       // SkypeIo
-#include "../skype_io/event_parser.h"   // EventParser
-#include "../skype_io/str_helper.h"     // StrHelper
+#include "../skype_service/skype_service.h" // SkypeService
+#include "../skype_service/event_parser.h"  // EventParser
+#include "../skype_service/str_helper.h"    // StrHelper
 
 #include "../utils/dummy_logger.h"      // dummy_log
 #include "../utils/mutex_helper.h"      // MUTEX_SCOPE_LOCK
@@ -46,8 +46,8 @@ VoipService::VoipService():
         state_( UNDEFINED ),
         req_state_( NONE ),
         req_hash_id_( 0 ),
-        cs_( skype_wrap::conn_status_e::NONE ),
-        us_( skype_wrap::user_status_e::NONE ),
+        cs_( skype_service::conn_status_e::NONE ),
+        us_( skype_service::user_status_e::NONE ),
         failure_reason_( 0 ),
         pstn_status_( 0 ),
         next_id_( 0 )
@@ -58,7 +58,7 @@ VoipService::~VoipService()
 {
 }
 
-bool VoipService::init( skype_wrap::SkypeIo * sw )
+bool VoipService::init( skype_service::SkypeService * sw )
 {
     MUTEX_SCOPE_LOCK( mutex_ );
 
@@ -76,8 +76,8 @@ void VoipService::consume( const VoipioObject * req )
     ServerBase::consume( req );
 }
 
-// interface skype_wrap::ISkypeCallback
-void VoipService::consume( const skype_wrap::Event * e )
+// interface skype_service::ISkypeCallback
+void VoipService::consume( const skype_service::Event * e )
 {
     VoipioObjectWrap * ew = new VoipioObjectWrap;
 
@@ -164,7 +164,7 @@ void VoipService::handle( const VoipioDrop * req )
 
     uint32_t hash_id    = get_next_id();
 
-    bool b = sio_->set_call_status( req->call_id, skype_wrap::call_status_e::FINISHED, hash_id );
+    bool b = sio_->set_call_status( req->call_id, skype_service::call_status_e::FINISHED, hash_id );
 
     if( b == false )
     {
@@ -238,7 +238,7 @@ void VoipService::handle( const VoipioObjectWrap * req )
 {
     // private: no mutex lock
 
-    const skype_wrap::Event * ev = static_cast<const skype_wrap::Event*>( req->ptr );
+    const skype_service::Event * ev = static_cast<const skype_service::Event*>( req->ptr );
 
     ASSERT( ev );
 
@@ -251,7 +251,7 @@ void VoipService::handle( const VoipioObjectWrap * req )
     {
         if( ev->has_hash_id() == false )
         {
-            dummy_log_info( MODULENAME, "ignoring a non-response notification: %s", skype_wrap::StrHelper::to_string( ev->get_type() ).c_str() );
+            dummy_log_info( MODULENAME, "ignoring a non-response notification: %s", skype_service::StrHelper::to_string( ev->get_type() ).c_str() );
 
             delete ev;
 
@@ -262,7 +262,7 @@ void VoipService::handle( const VoipioObjectWrap * req )
         {
             dummy_log_error( MODULENAME, "unexpected hash id: %u, expected %u, msg %s, ignoring",
                     ev->get_hash_id(), req_hash_id_,
-                    skype_wrap::StrHelper::to_string( ev->get_type() ).c_str() );
+                    skype_service::StrHelper::to_string( ev->get_type() ).c_str() );
 
             delete ev;
 
@@ -297,83 +297,83 @@ void VoipService::handle( const VoipioObjectWrap * req )
     delete ev;
 }
 
-void VoipService::handle_in_state_none( const skype_wrap::Event * ev )
+void VoipService::handle_in_state_none( const skype_service::Event * ev )
 {
     // private: no mutex lock
 
-    skype_wrap::Event::type_e id = ev->get_type();
+    skype_service::Event::type_e id = ev->get_type();
 
     switch( id )
     {
-    case skype_wrap::Event::CONNSTATUS:
-        handle( static_cast<const skype_wrap::ConnStatusEvent*>( ev ) );
+    case skype_service::Event::CONNSTATUS:
+        handle( static_cast<const skype_service::ConnStatusEvent*>( ev ) );
         break;
 
-    case skype_wrap::Event::USERSTATUS:
-        handle( static_cast<const skype_wrap::UserStatusEvent*>( ev ) );
+    case skype_service::Event::USERSTATUS:
+        handle( static_cast<const skype_service::UserStatusEvent*>( ev ) );
         break;
 
-    case skype_wrap::Event::CURRENTUSERHANDLE:
-        handle( static_cast<const skype_wrap::CurrentUserHandleEvent*>( ev ) );
+    case skype_service::Event::CURRENTUSERHANDLE:
+        handle( static_cast<const skype_service::CurrentUserHandleEvent*>( ev ) );
         break;
 
-    case skype_wrap::Event::USER_ONLINE_STATUS:
+    case skype_service::Event::USER_ONLINE_STATUS:
         break;
 
-    case skype_wrap::Event::CALL:
+    case skype_service::Event::CALL:
         break;
-    case skype_wrap::Event::CALL_DURATION:
-        handle( static_cast<const skype_wrap::CallDurationEvent*>( ev ) );
-        break;
-
-    case skype_wrap::Event::CALL_STATUS:
-        handle( static_cast<const skype_wrap::CallStatusEvent*>( ev ) );
+    case skype_service::Event::CALL_DURATION:
+        handle( static_cast<const skype_service::CallDurationEvent*>( ev ) );
         break;
 
-    case skype_wrap::Event::CALL_PSTN_STATUS:
-        handle( static_cast<const skype_wrap::CallPstnStatusEvent*>( ev ) );
+    case skype_service::Event::CALL_STATUS:
+        handle( static_cast<const skype_service::CallStatusEvent*>( ev ) );
         break;
 
-    case skype_wrap::Event::CALL_FAILUREREASON:
-        handle( static_cast<const skype_wrap::CallFailureReasonEvent*>( ev ) );
+    case skype_service::Event::CALL_PSTN_STATUS:
+        handle( static_cast<const skype_service::CallPstnStatusEvent*>( ev ) );
         break;
 
-    case skype_wrap::Event::CALL_VAA_INPUT_STATUS:
-        handle( static_cast<const skype_wrap::CallVaaInputStatusEvent*>( ev ) );
+    case skype_service::Event::CALL_FAILUREREASON:
+        handle( static_cast<const skype_service::CallFailureReasonEvent*>( ev ) );
         break;
 
-    case skype_wrap::Event::ERROR:
-        handle( static_cast<const skype_wrap::ErrorEvent*>( ev ) );
+    case skype_service::Event::CALL_VAA_INPUT_STATUS:
+        handle( static_cast<const skype_service::CallVaaInputStatusEvent*>( ev ) );
         break;
 
-    case skype_wrap::Event::UNDEF:
+    case skype_service::Event::ERROR:
+        handle( static_cast<const skype_service::ErrorEvent*>( ev ) );
         break;
 
-    case skype_wrap::Event::CHAT:
-    case skype_wrap::Event::CHATMEMBER:
+    case skype_service::Event::UNDEF:
+        break;
+
+    case skype_service::Event::CHAT:
+    case skype_service::Event::CHATMEMBER:
         // simply ignore
         break;
 
-    case skype_wrap::Event::UNKNOWN:
+    case skype_service::Event::UNKNOWN:
     default:
         on_unknown( "???" );
         break;
     }
 }
 
-void VoipService::handle_in_state_w_ic( const skype_wrap::Event * ev )
+void VoipService::handle_in_state_w_ic( const skype_service::Event * ev )
 {
     // private: no mutex lock
 
     req_state_      = NONE;
     req_hash_id_    = 0;
 
-    if( ev->get_type() != skype_wrap::Event::CALL_STATUS )
+    if( ev->get_type() != skype_service::Event::CALL_STATUS )
     {
-        if( ev->get_type() == skype_wrap::Event::ERROR )
+        if( ev->get_type() == skype_service::Event::ERROR )
         {
-            uint32 errorcode    = static_cast<const skype_wrap::ErrorEvent*>( ev )->get_par_int();
-            std::string descr   = static_cast<const skype_wrap::ErrorEvent*>( ev )->get_par_str();
+            uint32 errorcode    = static_cast<const skype_service::ErrorEvent*>( ev )->get_par_int();
+            std::string descr   = static_cast<const skype_service::ErrorEvent*>( ev )->get_par_str();
 
             dummy_log_error( MODULENAME, "error occurred: %u '%s'", errorcode, descr.c_str() );
 
@@ -381,19 +381,19 @@ void VoipService::handle_in_state_w_ic( const skype_wrap::Event * ev )
         }
         else
         {
-            dummy_log_error( MODULENAME, "unexpected response: %s", skype_wrap::StrHelper::to_string( ev->get_type() ).c_str() );
+            dummy_log_error( MODULENAME, "unexpected response: %s", skype_service::StrHelper::to_string( ev->get_type() ).c_str() );
 
-            callback_consume( create_error_response( 0, "unexpected response: " + skype_wrap::StrHelper::to_string( ev->get_type() ) ) );
+            callback_consume( create_error_response( 0, "unexpected response: " + skype_service::StrHelper::to_string( ev->get_type() ) ) );
         }
         return;
     }
 
-    uint32 call_id = static_cast<const skype_wrap::BasicCallEvent*>( ev )->get_call_id();
+    uint32 call_id = static_cast<const skype_service::BasicCallEvent*>( ev )->get_call_id();
 
-    skype_wrap::call_status_e status_code = static_cast<const skype_wrap::CallStatusEvent*>( ev )->get_call_s();
+    skype_service::call_status_e status_code = static_cast<const skype_service::CallStatusEvent*>( ev )->get_call_s();
     uint32 status  = static_cast<uint32>( status_code );
 
-    dummy_log_debug( MODULENAME, "call initiated: %u, status %s", call_id, skype_wrap::to_string( status_code ).c_str() );
+    dummy_log_debug( MODULENAME, "call initiated: %u, status %s", call_id, skype_service::to_string( status_code ).c_str() );
 
     failure_reason_ = 0;
     pstn_status_    = 0;
@@ -401,65 +401,65 @@ void VoipService::handle_in_state_w_ic( const skype_wrap::Event * ev )
     callback_consume( create_initiate_call_response( call_id, status ) );
 }
 
-void VoipService::handle_in_state_w_dr( const skype_wrap::Event * ev )
+void VoipService::handle_in_state_w_dr( const skype_service::Event * ev )
 {
     // private: no mutex lock
 
     req_state_      = NONE;
     req_hash_id_    = 0;
 
-    if( ev->get_type() == skype_wrap::Event::CALL_STATUS )
+    if( ev->get_type() == skype_service::Event::CALL_STATUS )
     {
-        const skype_wrap::CallStatusEvent * cse = static_cast<const skype_wrap::CallStatusEvent *>( ev );
-        if( cse->get_call_s() == skype_wrap::call_status_e::FINISHED )
+        const skype_service::CallStatusEvent * cse = static_cast<const skype_service::CallStatusEvent *>( ev );
+        if( cse->get_call_s() == skype_service::call_status_e::FINISHED )
         {
             callback_consume( create_message_t<VoipioDropResponse>( cse->get_call_id() ) );
         }
         else
         {
-            dummy_log_debug( MODULENAME, "dropping, current state: %s", skype_wrap::to_string( cse->get_call_s() ).c_str() );
+            dummy_log_debug( MODULENAME, "dropping, current state: %s", skype_service::to_string( cse->get_call_s() ).c_str() );
         }
         return;
     }
 
-    dummy_log_error( MODULENAME, "unexpected response: %s", skype_wrap::StrHelper::to_string( ev->get_type() ).c_str() );
+    dummy_log_error( MODULENAME, "unexpected response: %s", skype_service::StrHelper::to_string( ev->get_type() ).c_str() );
 
-    callback_consume( create_error_response( 0, "unexpected response: " + skype_wrap::StrHelper::to_string( ev->get_type() ) ) );
+    callback_consume( create_error_response( 0, "unexpected response: " + skype_service::StrHelper::to_string( ev->get_type() ) ) );
 }
 
-void VoipService::handle_in_state_w_pl( const skype_wrap::Event * ev )
+void VoipService::handle_in_state_w_pl( const skype_service::Event * ev )
 {
     // private: no mutex lock
 
     req_state_      = NONE;
     req_hash_id_    = 0;
 
-    if( ev->get_type() != skype_wrap::Event::ALTER_CALL_SET_INPUT_FILE )
+    if( ev->get_type() != skype_service::Event::ALTER_CALL_SET_INPUT_FILE )
     {
-        dummy_log_error( MODULENAME, "unexpected response: %s", skype_wrap::StrHelper::to_string( ev->get_type() ).c_str() );
+        dummy_log_error( MODULENAME, "unexpected response: %s", skype_service::StrHelper::to_string( ev->get_type() ).c_str() );
 
         callback_consume( create_call_error_response(
-                static_cast<const skype_wrap::BasicCallEvent*>( ev )->get_call_id(), 0,
-                "unexpected response: " + skype_wrap::StrHelper::to_string( ev->get_type() ) ) );
+                static_cast<const skype_service::BasicCallEvent*>( ev )->get_call_id(), 0,
+                "unexpected response: " + skype_service::StrHelper::to_string( ev->get_type() ) ) );
 
         return;
     }
 }
 
-void VoipService::handle_in_state_w_re( const skype_wrap::Event * ev )
+void VoipService::handle_in_state_w_re( const skype_service::Event * ev )
 {
     // private: no mutex lock
 
     req_state_      = NONE;
     req_hash_id_    = 0;
 
-    if( ev->get_type() != skype_wrap::Event::ALTER_CALL_SET_OUTPUT_FILE )
+    if( ev->get_type() != skype_service::Event::ALTER_CALL_SET_OUTPUT_FILE )
     {
-        dummy_log_error( MODULENAME, "unexpected response: %s", skype_wrap::StrHelper::to_string( ev->get_type() ).c_str() );
+        dummy_log_error( MODULENAME, "unexpected response: %s", skype_service::StrHelper::to_string( ev->get_type() ).c_str() );
 
         callback_consume( create_call_error_response(
-                static_cast<const skype_wrap::BasicCallEvent*>( ev )->get_call_id(), 0,
-                "unexpected response: " +skype_wrap::StrHelper::to_string( ev->get_type() ) ) );
+                static_cast<const skype_service::BasicCallEvent*>( ev )->get_call_id(), 0,
+                "unexpected response: " +skype_service::StrHelper::to_string( ev->get_type() ) ) );
         return;
     }
 }
@@ -488,7 +488,7 @@ bool VoipService::register_callback( IVoipServiceCallback * callback )
     return true;
 }
 
-void VoipService::handle( const skype_wrap::ConnStatusEvent * e )
+void VoipService::handle( const skype_service::ConnStatusEvent * e )
 {
     dummy_log_info( MODULENAME, "conn status %u", e->get_conn_s() );
 
@@ -497,7 +497,7 @@ void VoipService::handle( const skype_wrap::ConnStatusEvent * e )
     switch_to_ready_if_possible();
 }
 
-void VoipService::handle( const skype_wrap::UserStatusEvent * e )
+void VoipService::handle( const skype_service::UserStatusEvent * e )
 {
     dummy_log_info( MODULENAME, "user status %u", e->get_user_s() );
 
@@ -508,10 +508,10 @@ void VoipService::handle( const skype_wrap::UserStatusEvent * e )
 
 void VoipService::switch_to_ready_if_possible()
 {
-    if( cs_ != skype_wrap::conn_status_e::ONLINE )
+    if( cs_ != skype_service::conn_status_e::ONLINE )
         return;
 
-    if( us_ != skype_wrap::user_status_e::ONLINE )
+    if( us_ != skype_service::user_status_e::ONLINE )
         return;
 
     ASSERT( state_ == UNDEFINED );
@@ -524,7 +524,7 @@ void VoipService::send_reject_response( uint32 errorcode, const std::string & de
     callback_consume( create_reject_response( errorcode, descr ) );
 }
 
-void VoipService::handle( const skype_wrap::CurrentUserHandleEvent * e )
+void VoipService::handle( const skype_service::CurrentUserHandleEvent * e )
 {
     dummy_log_info( MODULENAME, "current user handle %s", e->get_par_str().c_str() );
 }
@@ -532,64 +532,64 @@ void VoipService::on_unknown( const std::string & s )
 {
     dummy_log_warn( MODULENAME, "unknown response: %s", s.c_str() );
 }
-void VoipService::handle( const skype_wrap::ErrorEvent * e )
+void VoipService::handle( const skype_service::ErrorEvent * e )
 {
     dummy_log_debug( MODULENAME, "error %u '%s'", e->get_par_int(), e->get_par_str().c_str() );
 
     callback_consume( create_error_response( e->get_par_int(), e->get_par_str() ) );
 }
 
-void VoipService::handle( const skype_wrap::CallStatusEvent * e )
+void VoipService::handle( const skype_service::CallStatusEvent * e )
 {
     uint32 n                    = e->get_call_id();
-    skype_wrap::call_status_e s = e->get_call_s();
+    skype_service::call_status_e s = e->get_call_s();
 
-    dummy_log_debug( MODULENAME, "call %u status %s", n, skype_wrap::to_string( s ).c_str() );
+    dummy_log_debug( MODULENAME, "call %u status %s", n, skype_service::to_string( s ).c_str() );
 
     switch( s )
     {
-    case skype_wrap::call_status_e::CANCELLED:
+    case skype_service::call_status_e::CANCELLED:
         callback_consume( create_call_end( n, VoipioCallEnd::CANCELLED ) );
         break;
 
-    case skype_wrap::call_status_e::FINISHED:
+    case skype_service::call_status_e::FINISHED:
         if( pstn_status_ != 0 )
             callback_consume( create_call_end( n, VoipioCallEnd::FAILED_PSTN, pstn_status_, pstn_status_msg_ ) );
         else
             callback_consume( create_call_end( n, VoipioCallEnd::FINISHED ) );
         break;
 
-    case skype_wrap::call_status_e::ROUTING:
+    case skype_service::call_status_e::ROUTING:
         callback_consume( create_message_t<VoipioDial>( n ) );
         break;
 
-    case skype_wrap::call_status_e::RINGING:
+    case skype_service::call_status_e::RINGING:
         callback_consume( create_message_t<VoipioRing>( n ) );
         break;
 
-    case skype_wrap::call_status_e::INPROGRESS:
+    case skype_service::call_status_e::INPROGRESS:
         callback_consume( create_message_t<VoipioConnect>( n ) );
         break;
 
-    case skype_wrap::call_status_e::NONE:
+    case skype_service::call_status_e::NONE:
         callback_consume( create_call_end( n, VoipioCallEnd::NONE ) );
         break;
 
-    case skype_wrap::call_status_e::FAILED:
+    case skype_service::call_status_e::FAILED:
         callback_consume( create_call_end( n, VoipioCallEnd::FAILED, failure_reason_, failure_reason_msg_ ) );
         break;
 
-    case skype_wrap::call_status_e::REFUSED:
+    case skype_service::call_status_e::REFUSED:
         callback_consume( create_call_end( n, VoipioCallEnd::REFUSED ) );
         break;
 
     default:
-        dummy_log_warn( MODULENAME, "unhandled status %s (%u)", skype_wrap::to_string( s ).c_str(), s );
+        dummy_log_warn( MODULENAME, "unhandled status %s (%u)", skype_service::to_string( s ).c_str(), s );
         break;
     }
 }
 
-void VoipService::handle( const skype_wrap::CallPstnStatusEvent * ev )
+void VoipService::handle( const skype_service::CallPstnStatusEvent * ev )
 {
     uint32 n    = ev->get_call_id();
     uint32 e    = ev->get_par_int();
@@ -601,14 +601,14 @@ void VoipService::handle( const skype_wrap::CallPstnStatusEvent * ev )
     pstn_status_msg_    = ev->get_par_str();
 }
 
-void VoipService::handle( const skype_wrap::CallDurationEvent * e )
+void VoipService::handle( const skype_service::CallDurationEvent * e )
 {
     dummy_log_debug( MODULENAME, "call %u dur %u", e->get_call_id(), e->get_par_int() );
 
     callback_consume( create_call_duration( e->get_call_id(), e->get_par_int() ) );
 }
 
-void VoipService::handle( const skype_wrap::CallFailureReasonEvent * e )
+void VoipService::handle( const skype_service::CallFailureReasonEvent * e )
 {
     dummy_log_info( MODULENAME, "call %u failure %u", e->get_call_id(), e->get_par_int() );
 
@@ -643,7 +643,7 @@ const char* VoipService::decode_failure_reason( const uint32 c )
     return table[ c ];
 }
 
-void VoipService::handle( const skype_wrap::CallVaaInputStatusEvent * e )
+void VoipService::handle( const skype_service::CallVaaInputStatusEvent * e )
 {
     uint32 n    = e->get_call_id();
     uint32 s    = e->get_par_int();
