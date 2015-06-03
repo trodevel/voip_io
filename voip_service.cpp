@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1805 $ $Date:: 2015-06-01 #$ $Author: serge $
+// $Revision: 1808 $ $Date:: 2015-06-02 #$ $Author: serge $
 
 
 #include "voip_service.h"           // self
@@ -508,15 +508,31 @@ void VoipService::handle( const skype_service::UserStatusEvent * e )
 
 void VoipService::switch_to_ready_if_possible()
 {
-    if( cs_ != skype_service::conn_status_e::ONLINE )
-        return;
+    if( state_ == UNDEFINED )
+    {
+        if( cs_ == skype_service::conn_status_e::ONLINE  &&
+                ( us_ == skype_service::user_status_e::ONLINE
+                        || us_ == skype_service::user_status_e::AWAY
+                        || us_ == skype_service::user_status_e::DND
+                        || us_ == skype_service::user_status_e::INVISIBLE
+                        || us_ == skype_service::user_status_e::NA ) )
+        {
+            state_ = READY;
 
-    if( us_ != skype_service::user_status_e::ONLINE )
-        return;
+            dummy_log_info( MODULENAME, "switched to READY" );
+        }
+    }
+    else if( state_ == READY )
+    {
+        if( cs_ == skype_service::conn_status_e::OFFLINE
+                || cs_ == skype_service::conn_status_e::CONNECTING
+                || us_ == skype_service::user_status_e::OFFLINE )
+        {
+            state_ = UNDEFINED;
 
-    ASSERT( state_ == UNDEFINED );
-
-    state_ = READY;
+            dummy_log_info( MODULENAME, "switched to UNDEFINED" );
+        }
+    }
 }
 
 void VoipService::send_reject_response( uint32 errorcode, const std::string & descr )
