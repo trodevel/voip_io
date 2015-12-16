@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1805 $ $Date:: 2015-06-01 #$ $Author: serge $
+// $Revision: 2991 $ $Date:: 2015-12-15 #$ $Author: serge $
 
 #ifndef VOIP_SERVICE_H
 #define VOIP_SERVICE_H
@@ -34,7 +34,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include "../servt/server_t.h"          // ServerT
 #include "voip_types.h"                 // errorcode_e
 
-#include "objects.h"                    // VoipioObject
+#include "objects.h"                    // Object
 #include "namespace_lib.h"          // NAMESPACE_VOIP_SERVICE_START
 
 namespace skype_service
@@ -69,7 +69,7 @@ public:
     virtual bool shutdown();
 
     // interface IVoipService
-    void consume( const VoipioObject * req );
+    void consume( const Object * req );
 
     // interface skype_service::ICallback
     virtual void consume( const skype_service::Event * e );
@@ -80,11 +80,11 @@ private:
     void handle( const servt::IObject* req );
 
     // IVoipService interface
-    void handle( const VoipioInitiateCall * req );
-    void handle( const VoipioDrop * req );
-    void handle( const VoipioPlayFile * req );
-    void handle( const VoipioRecordFile * req );
-    void handle( const VoipioObjectWrap * req );
+    void handle( const InitiateCallRequest * req );
+    void handle( const DropRequest * req );
+    void handle( const PlayFileRequest * req );
+    void handle( const RecordFileRequest * req );
+    void handle( const ObjectWrap * req );
 
     // interface skype_service::ICallback
     void handle( const skype_service::ConnStatusEvent * e );
@@ -110,7 +110,7 @@ private:
     void handle_in_state_w_pl( const skype_service::Event * ev );
     void handle_in_state_w_re( const skype_service::Event * ev );
 
-    void callback_consume( const VoipioCallbackObject * req );
+    void callback_consume( const ResponseObject * req );
 
     uint32_t get_next_id();
 

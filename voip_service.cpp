@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1808 $ $Date:: 2015-06-02 #$ $Author: serge $
+// $Revision: 2991 $ $Date:: 2015-12-15 #$ $Author: serge $
 
 
 #include "voip_service.h"           // self
@@ -71,7 +71,7 @@ bool VoipService::init( skype_service::SkypeService * sw )
 }
 
 // interface IVoipService
-void VoipService::consume( const VoipioObject * req )
+void VoipService::consume( const Object * req )
 {
     ServerBase::consume( req );
 }
@@ -79,7 +79,7 @@ void VoipService::consume( const VoipioObject * req )
 // interface skype_service::ISkypeCallback
 void VoipService::consume( const skype_service::Event * e )
 {
-    VoipioObjectWrap * ew = new VoipioObjectWrap;
+    ObjectWrap * ew = new ObjectWrap;
 
     ew->ptr = e;
 
@@ -91,25 +91,25 @@ void VoipService::handle( const servt::IObject* req )
 {
     MUTEX_SCOPE_LOCK( mutex_ );
 
-    if( typeid( *req ) == typeid( VoipioInitiateCall ) )
+    if( typeid( *req ) == typeid( InitiateCallRequest ) )
     {
-        handle( dynamic_cast< const VoipioInitiateCall *>( req ) );
+        handle( dynamic_cast< const InitiateCallRequest *>( req ) );
     }
-    else if( typeid( *req ) == typeid( VoipioPlayFile ) )
+    else if( typeid( *req ) == typeid( PlayFileRequest ) )
     {
-        handle( dynamic_cast< const VoipioPlayFile *>( req ) );
+        handle( dynamic_cast< const PlayFileRequest *>( req ) );
     }
-    else if( typeid( *req ) == typeid( VoipioRecordFile ) )
+    else if( typeid( *req ) == typeid( RecordFileRequest ) )
     {
-        handle( dynamic_cast< const VoipioRecordFile *>( req ) );
+        handle( dynamic_cast< const RecordFileRequest *>( req ) );
     }
-    else if( typeid( *req ) == typeid( VoipioDrop ) )
+    else if( typeid( *req ) == typeid( DropRequest ) )
     {
-        handle( dynamic_cast< const VoipioDrop *>( req ) );
+        handle( dynamic_cast< const DropRequest *>( req ) );
     }
-    else if( typeid( *req ) == typeid( VoipioObjectWrap ) )
+    else if( typeid( *req ) == typeid( ObjectWrap ) )
     {
-        handle( dynamic_cast< const VoipioObjectWrap *>( req ) );
+        handle( dynamic_cast< const ObjectWrap *>( req ) );
     }
     else
     {
@@ -121,7 +121,7 @@ void VoipService::handle( const servt::IObject* req )
     delete req;
 }
 
-void VoipService::handle( const VoipioInitiateCall * req )
+void VoipService::handle( const InitiateCallRequest * req )
 {
     // private: no mutex lock
 
@@ -150,7 +150,7 @@ void VoipService::handle( const VoipioInitiateCall * req )
     req_hash_id_    = hash_id;
 }
 
-void VoipService::handle( const VoipioDrop * req )
+void VoipService::handle( const DropRequest * req )
 {
     // private: no mutex lock
 
@@ -176,7 +176,7 @@ void VoipService::handle( const VoipioDrop * req )
     req_hash_id_    = hash_id;
 }
 
-void VoipService::handle( const VoipioPlayFile * req )
+void VoipService::handle( const PlayFileRequest * req )
 {
     // private: no mutex lock
 
@@ -205,7 +205,7 @@ void VoipService::handle( const VoipioPlayFile * req )
     req_hash_id_    = hash_id;
 }
 
-void VoipService::handle( const VoipioRecordFile * req )
+void VoipService::handle( const RecordFileRequest * req )
 {
     // private: no mutex lock
 
@@ -234,7 +234,7 @@ void VoipService::handle( const VoipioRecordFile * req )
     req_hash_id_    = hash_id;
 }
 
-void VoipService::handle( const VoipioObjectWrap * req )
+void VoipService::handle( const ObjectWrap * req )
 {
     // private: no mutex lock
 
@@ -413,7 +413,7 @@ void VoipService::handle_in_state_w_dr( const skype_service::Event * ev )
         const skype_service::CallStatusEvent * cse = static_cast<const skype_service::CallStatusEvent *>( ev );
         if( cse->get_call_s() == skype_service::call_status_e::FINISHED )
         {
-            callback_consume( create_message_t<VoipioDropResponse>( cse->get_call_id() ) );
+            callback_consume( create_message_t<DropResponse>( cse->get_call_id() ) );
         }
         else
         {
@@ -565,38 +565,38 @@ void VoipService::handle( const skype_service::CallStatusEvent * e )
     switch( s )
     {
     case skype_service::call_status_e::CANCELLED:
-        callback_consume( create_call_end( n, VoipioCallEnd::CANCELLED ) );
+        callback_consume( create_call_end( n, CallEnd::CANCELLED ) );
         break;
 
     case skype_service::call_status_e::FINISHED:
         if( pstn_status_ != 0 )
-            callback_consume( create_call_end( n, VoipioCallEnd::FAILED_PSTN, pstn_status_, pstn_status_msg_ ) );
+            callback_consume( create_call_end( n, CallEnd::FAILED_PSTN, pstn_status_, pstn_status_msg_ ) );
         else
-            callback_consume( create_call_end( n, VoipioCallEnd::FINISHED ) );
+            callback_consume( create_call_end( n, CallEnd::FINISHED ) );
         break;
 
     case skype_service::call_status_e::ROUTING:
-        callback_consume( create_message_t<VoipioDial>( n ) );
+        callback_consume( create_message_t<Dial>( n ) );
         break;
 
     case skype_service::call_status_e::RINGING:
-        callback_consume( create_message_t<VoipioRing>( n ) );
+        callback_consume( create_message_t<Ring>( n ) );
         break;
 
     case skype_service::call_status_e::INPROGRESS:
-        callback_consume( create_message_t<VoipioConnect>( n ) );
+        callback_consume( create_message_t<Connect>( n ) );
         break;
 
     case skype_service::call_status_e::NONE:
-        callback_consume( create_call_end( n, VoipioCallEnd::NONE ) );
+        callback_consume( create_call_end( n, CallEnd::NONE ) );
         break;
 
     case skype_service::call_status_e::FAILED:
-        callback_consume( create_call_end( n, VoipioCallEnd::FAILED, failure_reason_, failure_reason_msg_ ) );
+        callback_consume( create_call_end( n, CallEnd::FAILED, failure_reason_, failure_reason_msg_ ) );
         break;
 
     case skype_service::call_status_e::REFUSED:
-        callback_consume( create_call_end( n, VoipioCallEnd::REFUSED ) );
+        callback_consume( create_call_end( n, CallEnd::REFUSED ) );
         break;
 
     default:
@@ -667,12 +667,10 @@ void VoipService::handle( const skype_service::CallVaaInputStatusEvent * e )
     dummy_log_debug( MODULENAME, "call %u vaa_input_status %u", n, s );
 
     if( s )
-        callback_consume( create_message_t<VoipioPlayStarted>( n ) );
-    else
-        callback_consume( create_message_t<VoipioPlayStopped>( n ) );
+        callback_consume( create_message_t<PlayFileResponse>( n ) );
 }
 
-void VoipService::callback_consume( const VoipioCallbackObject * req )
+void VoipService::callback_consume( const ResponseObject * req )
 {
     if( callback_ )
         callback_->consume( req );

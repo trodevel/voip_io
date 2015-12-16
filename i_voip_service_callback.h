@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 1404 $ $Date:: 2015-01-16 #$ $Author: serge $
+// $Revision: 2990 $ $Date:: 2015-12-15 #$ $Author: serge $
 
 #ifndef I_VOIP_SERVICE_CALLBACK_H
 #define I_VOIP_SERVICE_CALLBACK_H
@@ -28,14 +28,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 NAMESPACE_VOIP_SERVICE_START
 
-class VoipioCallbackObject;
+class CallbackObject;
 
 class IVoipServiceCallback
 {
 public:
     virtual ~IVoipServiceCallback() {};
 
-    virtual void consume( const VoipioCallbackObject * req )    = 0;
+    virtual void consume( const CallbackObject * req )    = 0;
 };
 
 NAMESPACE_VOIP_SERVICE_END

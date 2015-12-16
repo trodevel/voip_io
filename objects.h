@@ -20,13 +20,13 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 1404 $ $Date:: 2015-01-16 #$ $Author: serge $
+// $Revision: 2990 $ $Date:: 2015-12-15 #$ $Author: serge $
 
 #ifndef VOIP_SERVICE_OBJECTS_H
 #define VOIP_SERVICE_OBJECTS_H
 
 #include <string>                   // std::string
-#include "../utils/types.h"         // uint32
+#include <cstdint>                  // uint32_t
 
 #include "../servt/i_object.h"      // IObject
 
@@ -34,90 +34,91 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 NAMESPACE_VOIP_SERVICE_START
 
-struct VoipioObject: public servt::IObject
+// ******************* GENERICS *******************
+
+struct Object: public servt::IObject
 {
 };
 
-struct VoipioCallObject: public VoipioObject
+struct CallbackObject: public Object
 {
-    uint32          call_id;
 };
 
-struct VoipioInitiateCall: public VoipioObject
+struct RequestObject: public Object
+{
+    uint32_t        job_id;
+};
+
+struct ResponseObject: public CallbackObject
+{
+    uint32_t        job_id;
+};
+
+// ******************* ERRORS *******************
+
+struct ErrorResponse: public ResponseObject
+{
+    uint32_t        errorcode;
+    std::string     descr;
+};
+
+struct RejectResponse: public ResponseObject
+{
+    uint32_t        errorcode;
+    std::string     descr;
+};
+
+// ******************* CALL *******************
+
+struct InitiateCallRequest: public RequestObject
 {
     std::string     party;
 };
 
-struct VoipioPlayFile: public VoipioCallObject
+struct InitiateCallResponse: public ResponseObject
 {
+    uint32_t        call_id;
+    uint32_t        status;
+};
+
+struct DropRequest: public RequestObject
+{
+    uint32_t        call_id;
+};
+
+struct DropResponse: public ResponseObject
+{
+};
+
+// ******************* IN-CALL REQUESTS *******************
+
+struct PlayFileRequest: public RequestObject
+{
+    uint32_t        call_id;
     std::string     filename;
 };
 
-struct VoipioRecordFile: public VoipioCallObject
+struct PlayFileResponse: public ResponseObject
 {
+};
+
+struct RecordFileRequest: public RequestObject
+{
+    uint32_t        call_id;
     std::string     filename;
 };
 
-struct VoipioDrop: public VoipioCallObject
+struct RecordFileResponse: public ResponseObject
 {
 };
 
-// ******************* CALLBACKS *******************
+// ******************* BEFORE CONNECTION MESSAGES *******************
 
-struct VoipioCallbackObject: public VoipioObject
-{
-};
-
-struct VoipioErrorResponse: public VoipioCallbackObject
-{
-    uint32 errorcode;
-    std::string descr;
-};
-
-struct VoipioRejectResponse: public VoipioCallbackObject
-{
-    uint32 errorcode;
-    std::string descr;
-};
-
-struct VoipioInitiateCallResponse: public VoipioCallbackObject
-{
-    uint32 call_id;
-    uint32 status;
-};
-
-
-struct VoipioCallbackCallObject: public VoipioCallbackObject
-{
-    uint32          call_id;
-};
-
-struct VoipioDropResponse: public VoipioCallbackCallObject
-{
-};
-
-struct VoipioDial: public VoipioCallbackCallObject
-{
-};
-
-struct VoipioRing: public VoipioCallbackCallObject
-{
-};
-
-struct VoipioConnect: public VoipioCallbackCallObject
-{
-};
-
-struct VoipioCallDuration: public VoipioCallbackCallObject
-{
-    uint32 t;
-};
-
-struct VoipioCallEnd: public VoipioCallbackCallObject
+struct Failed: public CallbackObject
 {
     enum type_e
     {
-        NONE,
+        UNDEF,
         CANCELLED,
         FINISHED,
         FAILED_PSTN,
@@ -125,28 +126,58 @@ struct VoipioCallEnd: public VoipioCallbackCallObject
         REFUSED
     };
 
+    uint32_t        call_id;
     type_e          type;
-    uint32          errorcode;
+    uint32_t        errorcode;
     std::string     descr;
 };
 
-struct VoipioPlayStarted: public VoipioCallbackCallObject
+struct Dial: public CallbackObject
 {
+    uint32_t        call_id;
 };
 
-struct VoipioPlayStopped: public VoipioCallbackCallObject
+struct Ring: public CallbackObject
 {
+    uint32_t        call_id;
 };
 
-struct VoipioCallErrorResponse: public VoipioCallbackCallObject
+struct Connected: public CallbackObject
 {
-    uint32          errorcode;
+    uint32_t        call_id;
+};
+
+// ******************* AFTER CONNECTION MESSAGES *******************
+
+struct ConnectionLost: public CallbackObject
+{
+    enum type_e
+    {
+        UNDEF,
+        CANCELLED,
+        FINISHED,
+        FAILED_PSTN,
+        FAILED,
+        REFUSED
+    };
+
+    uint32_t        call_id;
+    type_e          type;
+    uint32_t        errorcode;
     std::string     descr;
 };
+
+
+struct CallDuration: public CallbackObject
+{
+    uint32_t        call_id;
+    uint32_t        t;
+};
+
 
 // ******************* WRAPPER for objects not derived from servt::IObject *******************
 
-struct VoipioObjectWrap: public VoipioObject
+struct ObjectWrap: public Object
 {
     const void  *ptr;
 };

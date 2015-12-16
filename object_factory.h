@@ -20,27 +20,29 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 1404 $ $Date:: 2015-01-16 #$ $Author: serge $
+// $Revision: 2990 $ $Date:: 2015-12-15 #$ $Author: serge $
 
 #ifndef VOIP_SERVICE_OBJECT_FACTORY_H
 #define VOIP_SERVICE_OBJECT_FACTORY_H
 
-#include "objects.h"    // VoipioObject...
+#include "objects.h"    // Object...
 
 NAMESPACE_VOIP_SERVICE_START
 
-inline void init_call_id( VoipioCallObject * obj, uint32 call_id )
+template <class _T>
+void init_job_id( _T * obj, uint32_t job_id )
 {
-    obj->call_id = call_id;
+    obj->job_id = job_id;
 }
 
-inline void init_call_id( VoipioCallbackCallObject * obj, uint32 call_id )
+template <class _T>
+void init_call_id( _T * obj, uint32_t call_id )
 {
     obj->call_id = call_id;
 }
 
 template <class _T>
-_T *create_message_t( uint32 call_id )
+_T *create_message_t( uint32_t call_id )
 {
     _T *res = new _T;
 
@@ -49,59 +51,22 @@ _T *create_message_t( uint32 call_id )
     return res;
 }
 
-inline VoipioInitiateCall *create_initiate_call_request( const std::string & party )
+inline InitiateCallRequest *create_initiate_call_request( uint32_t job_id, const std::string & party )
 {
-    VoipioInitiateCall *res = new VoipioInitiateCall;
+    InitiateCallRequest *res = new InitiateCallRequest;
+
+    init_job_id( res, job_id );
 
     res->party      = party;
 
     return res;
 }
 
-inline VoipioPlayFile *create_play_file( uint32 call_id, const std::string & filename )
+inline InitiateCallResponse *create_initiate_call_response( uint32_t job_id, uint32_t call_id, uint32_t status )
 {
-    VoipioPlayFile *res = new VoipioPlayFile;
+    InitiateCallResponse *res = new InitiateCallResponse;
 
-    res->call_id    = call_id;
-    res->filename   = filename;
-
-    return res;
-}
-
-inline VoipioRecordFile *create_record_file( uint32 call_id, const std::string & filename )
-{
-    VoipioRecordFile *res = new VoipioRecordFile;
-
-    res->call_id    = call_id;
-    res->filename   = filename;
-
-    return res;
-}
-
-
-inline VoipioErrorResponse *create_error_response( uint32 errorcode, const std::string & descr )
-{
-    VoipioErrorResponse *res = new VoipioErrorResponse;
-
-    res->errorcode  = errorcode;
-    res->descr      = descr;
-
-    return res;
-}
-
-inline VoipioRejectResponse *create_reject_response( uint32 errorcode, const std::string & descr )
-{
-    VoipioRejectResponse *res = new VoipioRejectResponse;
-
-    res->errorcode  = errorcode;
-    res->descr      = descr;
-
-    return res;
-}
-
-inline VoipioInitiateCallResponse *create_initiate_call_response( uint32 call_id, uint32 status )
-{
-    VoipioInitiateCallResponse *res = new VoipioInitiateCallResponse;
+    init_job_id( res, job_id );
 
     res->call_id    = call_id;
     res->status     = status;
@@ -109,18 +74,67 @@ inline VoipioInitiateCallResponse *create_initiate_call_response( uint32 call_id
     return res;
 }
 
-inline VoipioCallDuration *create_call_duration( uint32 call_id, uint32 t )
+inline PlayFileRequest *create_play_file( uint32_t job_id, uint32_t call_id, const std::string & filename )
 {
-    VoipioCallDuration *res = create_message_t<VoipioCallDuration>( call_id );
+    PlayFileRequest *res = new PlayFileRequest;
+
+    init_job_id( res, job_id );
+
+    res->call_id    = call_id;
+    res->filename   = filename;
+
+    return res;
+}
+
+inline RecordFileRequest *create_record_file( uint32_t job_id, uint32_t call_id, const std::string & filename )
+{
+    RecordFileRequest *res = new RecordFileRequest;
+
+    init_job_id( res, job_id );
+
+    res->call_id    = call_id;
+    res->filename   = filename;
+
+    return res;
+}
+
+
+inline ErrorResponse *create_error_response( uint32_t job_id, uint32_t errorcode, const std::string & descr )
+{
+    ErrorResponse *res = new ErrorResponse;
+
+    init_job_id( res, job_id );
+
+    res->errorcode  = errorcode;
+    res->descr      = descr;
+
+    return res;
+}
+
+inline RejectResponse *create_reject_response( uint32_t job_id, uint32_t errorcode, const std::string & descr )
+{
+    RejectResponse *res = new RejectResponse;
+
+    init_job_id( res, job_id );
+
+    res->errorcode  = errorcode;
+    res->descr      = descr;
+
+    return res;
+}
+
+inline CallDuration *create_call_duration( uint32_t call_id, uint32_t t )
+{
+    CallDuration *res = create_message_t<CallDuration>( call_id );
 
     res->t  = t;
 
     return res;
 }
 
-inline VoipioCallEnd *create_call_end( uint32 call_id, VoipioCallEnd::type_e type, uint32 errorcode = 0, const std::string & descr = std::string() )
+inline Failed *create_failed( uint32_t call_id, Failed::type_e type, uint32_t errorcode = 0, const std::string & descr = std::string() )
 {
-    VoipioCallEnd *res = create_message_t<VoipioCallEnd>( call_id );
+    Failed *res = create_message_t<Failed>( call_id );
 
     res->type       = type;
     res->errorcode  = errorcode;
@@ -129,10 +143,11 @@ inline VoipioCallEnd *create_call_end( uint32 call_id, VoipioCallEnd::type_e typ
     return res;
 }
 
-inline VoipioCallErrorResponse *create_call_error_response( uint32 call_id, uint32 errorcode, const std::string & descr )
+inline ConnectionLost *create_connection_lost( uint32_t call_id, ConnectionLost::type_e type, uint32_t errorcode, const std::string & descr )
 {
-    VoipioCallErrorResponse *res = create_message_t<VoipioCallErrorResponse>( call_id );
+    ConnectionLost *res = create_message_t<ConnectionLost>( call_id );
 
+    res->type       = type;
     res->errorcode  = errorcode;
     res->descr      = descr;
 
