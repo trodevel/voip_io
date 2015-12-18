@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 2995 $ $Date:: 2015-12-16 #$ $Author: serge $
+// $Revision: 3001 $ $Date:: 2015-12-17 #$ $Author: serge $
 
 #ifndef VOIP_SERVICE_OBJECT_FACTORY_H
 #define VOIP_SERVICE_OBJECT_FACTORY_H
@@ -70,6 +70,15 @@ inline InitiateCallResponse *create_initiate_call_response( uint32_t job_id, uin
 
     res->call_id    = call_id;
     res->status     = status;
+
+    return res;
+}
+
+inline DropResponse *create_drop_response( uint32_t job_id )
+{
+    DropResponse *res = new DropResponse;
+
+    init_job_id( res, job_id );
 
     return res;
 }
