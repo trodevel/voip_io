@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3001 $ $Date:: 2015-12-17 #$ $Author: serge $
+// $Revision: 3032 $ $Date:: 2015-12-23 #$ $Author: serge $
 
 #ifndef VOIP_SERVICE_OBJECT_FACTORY_H
 #define VOIP_SERVICE_OBJECT_FACTORY_H
@@ -74,6 +74,17 @@ inline InitiateCallResponse *create_initiate_call_response( uint32_t job_id, uin
     return res;
 }
 
+inline DropRequest *create_drop_request( uint32_t job_id, uint32_t call_id )
+{
+    DropRequest *res = new DropRequest;
+
+    init_job_id( res, job_id );
+
+    res->call_id    = call_id;
+
+    return res;
+}
+
 inline DropResponse *create_drop_response( uint32_t job_id )
 {
     DropResponse *res = new DropResponse;
@@ -104,7 +115,7 @@ inline PlayFileResponse *create_play_file_response( uint32_t job_id )
     return res;
 }
 
-inline RecordFileRequest *create_record_file( uint32_t job_id, uint32_t call_id, const std::string & filename )
+inline RecordFileRequest *create_record_file_request( uint32_t job_id, uint32_t call_id, const std::string & filename )
 {
     RecordFileRequest *res = new RecordFileRequest;
 
