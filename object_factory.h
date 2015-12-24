@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3032 $ $Date:: 2015-12-23 #$ $Author: serge $
+// $Revision: 3054 $ $Date:: 2015-12-24 #$ $Author: serge $
 
 #ifndef VOIP_SERVICE_OBJECT_FACTORY_H
 #define VOIP_SERVICE_OBJECT_FACTORY_H
@@ -127,6 +127,14 @@ inline RecordFileRequest *create_record_file_request( uint32_t job_id, uint32_t 
     return res;
 }
 
+inline RecordFileResponse *create_record_file_response( uint32_t job_id )
+{
+    RecordFileResponse *res = new RecordFileResponse;
+
+    init_job_id( res, job_id );
+
+    return res;
+}
 
 inline ErrorResponse *create_error_response( uint32_t job_id, uint32_t errorcode, const std::string & descr )
 {
