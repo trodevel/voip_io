@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3005 $ $Date:: 2015-12-18 #$ $Author: serge $
+// $Revision: 3146 $ $Date:: 2016-01-08 #$ $Author: serge $
 
 #ifndef VOIP_SERVICE_OBJECTS_H
 #define VOIP_SERVICE_OBJECTS_H
@@ -118,13 +118,10 @@ struct Failed: public CallbackObject
 {
     enum type_e
     {
-        UNDEF,
-        CANCELLED,
-        FINISHED,
-        FAILED_PSTN,
         FAILED,
         REFUSED,
-        BUSY
+        BUSY,
+        NOANSWER
     };
 
     uint32_t        call_id;
