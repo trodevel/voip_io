@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3149 $ $Date:: 2016-01-09 #$ $Author: serge $
+// $Revision: 3181 $ $Date:: 2016-01-13 #$ $Author: serge $
 
 #ifndef VOIP_SERVICE_OBJECTS_H
 #define VOIP_SERVICE_OBJECTS_H
@@ -166,6 +166,33 @@ struct CallDuration: public CallbackObject
 {
     uint32_t        call_id;
     uint32_t        t;
+};
+
+
+struct DtmfTone: public CallbackObject
+{
+    enum tone_e
+    {
+        TONE_0,
+        TONE_1,
+        TONE_2,
+        TONE_3,
+        TONE_4,
+        TONE_5,
+        TONE_6,
+        TONE_7,
+        TONE_8,
+        TONE_9,
+        TONE_A,
+        TONE_B,
+        TONE_C,
+        TONE_D,
+        TONE_STAR,
+        TONE_HASH,
+    };
+
+    uint32_t        call_id;
+    tone_e          tone;
 };
 
 

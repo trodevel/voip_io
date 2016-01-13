@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3054 $ $Date:: 2015-12-24 #$ $Author: serge $
+// $Revision: 3182 $ $Date:: 2016-01-13 #$ $Author: serge $
 
 #ifndef VOIP_SERVICE_OBJECT_FACTORY_H
 #define VOIP_SERVICE_OBJECT_FACTORY_H
@@ -187,6 +187,15 @@ inline ConnectionLost *create_connection_lost( uint32_t call_id, ConnectionLost:
     res->type       = type;
     res->errorcode  = errorcode;
     res->descr      = descr;
+
+    return res;
+}
+
+inline DtmfTone *create_dtmf_tone( uint32_t call_id, DtmfTone::tone_e tone )
+{
+    auto * res = create_message_t<DtmfTone>( call_id );
+
+    res->tone       = tone;
 
     return res;
 }
