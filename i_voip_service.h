@@ -19,7 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// $Revision: 3034 $ $Date:: 2015-12-23 #$ $Author: serge $
+// $Revision: 3198 $ $Date:: 2016-01-18 #$ $Author: serge $
 
 #ifndef I_VOIP_SERVICE_H
 #define I_VOIP_SERVICE_H
