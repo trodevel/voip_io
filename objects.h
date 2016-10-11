@@ -20,7 +20,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// $Revision: 3315 $ $Date:: 2016-01-29 #$ $Author: serge $
+// $Revision: 4789 $ $Date:: 2016-10-11 #$ $Author: serge $
 
 #ifndef VOIP_SERVICE_OBJECTS_H
 #define VOIP_SERVICE_OBJECTS_H
@@ -194,15 +194,6 @@ struct DtmfTone: public CallbackObject
     uint32_t        call_id;
     tone_e          tone;
 };
-
-
-// ******************* WRAPPER for objects not derived from workt::IObject *******************
-
-struct ObjectWrap: public Object
-{
-    const void  *ptr;
-};
-
 
 NAMESPACE_VOIP_SERVICE_END
 
